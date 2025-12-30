@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(python scripts/test_connection.py:*)",
+      "Bash(where:*)",
+      "Bash(C:UsersvikraAppDataLocalMicrosoftWindowsAppspython.exe scripts/test_connection.py)",
+      "Bash(del \"C:\\\\Users\\\\vikra\\\\Projects\\\\fishermen-first-rockfish-platform\\\\app\\\\pages\\\\login.py\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFoundation complete: auth, navigation, CRUD template\n\n- Add Supabase client configuration \\(app/config.py\\)\n- Add authentication module with login/logout/role checking \\(app/auth.py\\)\n- Add main entry point with sidebar navigation \\(app/main.py\\)\n- Add role-based navigation \\(admin vs co_op_manager\\)\n- Add CRUD page template for consistent admin pages \\(templates/\\)\n- Add project documentation \\(CLAUDE.md, README.md\\)\n- Add database schema \\(sql/schema.sql\\)\n- Add test connection script \\(scripts/\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
