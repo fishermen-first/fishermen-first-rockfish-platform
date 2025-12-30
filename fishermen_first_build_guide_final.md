@@ -141,6 +141,16 @@ This template will be referenced by all admin pages to ensure consistency.
 
 ## Rosters (January 2026)
 
+### Manual Step: Add Test Data
+Before building the rosters page, add test data in Supabase so you can verify pages work:
+
+1. Go to Supabase → Table Editor
+2. Add to **cooperatives**: "Test Co-op A", "Test Co-op B"
+3. Add to **members**: "John Smith", "Jane Doe"
+4. Add to **vessels**: "F/V Test Boat" (owner: John Smith), "F/V Demo Ship" (owner: Jane Doe)
+5. Add to **cooperative_memberships**: Link John to Co-op A, Jane to Co-op B (effective_from: today, effective_to: null)
+6. Add to **vessel_cooperative_assignments**: Link vessels to co-ops (effective_from: today, effective_to: null)
+
 ### Prompt 9: View Rosters Page
 ```
 Create app/pages/rosters.py that shows three tabs:
