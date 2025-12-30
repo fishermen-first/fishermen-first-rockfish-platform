@@ -19,7 +19,7 @@
 ---
 
 ## Rosters (January 2026)
-- [ ] 9. Add test data to Supabase (cooperatives, members, vessels, assignments)
+- [x] 9. Add test data to Supabase (cooperatives, members, vessels, assignments)
 - [ ] 10. Build pages to view cooperatives, members, vessels
 - [ ] 11. Build admin pages to add/edit cooperatives
 - [ ] 12. Build admin pages to add/edit members
@@ -108,7 +108,7 @@
 |---------|--------|-------|-----------|
 | Setup | Jan | 4 | 4 |
 | Foundation | Jan | 4 | 4 |
-| Rosters | Jan | 7 | 0 |
+| Rosters | Jan | 7 | 1 |
 | File Uploads | Jan | 4 | 0 |
 | Quota Tracking | Feb | 4 | 0 |
 | PSC Tracking | Feb | 3 | 0 |
@@ -118,4 +118,4 @@
 | Refinements | Jul-Sep | 2 | 0 |
 | End of Season | Oct-Nov | 2 | 0 |
 | Wrap-up | Dec | 2 | 0 |
-| **Total** | | **37** | **8** |
+| **Total** | | **37** | **9** |

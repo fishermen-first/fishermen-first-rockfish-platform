@@ -141,17 +141,44 @@ This template will be referenced by all admin pages to ensure consistency.
 
 ## Rosters (January 2026)
 
-### Manual Step: Add Test Data
-Before building the rosters page, add test data in Supabase so you can verify pages work:
+### Prompt 9: Insert Test Data Script ✅
+```
+Create scripts/insert_test_data.py that inserts sample data into Supabase for testing:
 
-1. Go to Supabase → Table Editor
-2. Add to **cooperatives**: "Test Co-op A", "Test Co-op B"
-3. Add to **members**: "John Smith", "Jane Doe"
-4. Add to **vessels**: "F/V Test Boat" (owner: John Smith), "F/V Demo Ship" (owner: Jane Doe)
-5. Add to **cooperative_memberships**: Link John to Co-op A, Jane to Co-op B (effective_from: today, effective_to: null)
-6. Add to **vessel_cooperative_assignments**: Link vessels to co-ops (effective_from: today, effective_to: null)
+Cooperatives (2):
+- "Rockfish Co-op Alpha"
+- "Rockfish Co-op Beta"
 
-### Prompt 9: View Rosters Page
+Members (4):
+- "John Smith" (will be in Alpha)
+- "Jane Doe" (will be in Alpha)
+- "Bob Johnson" (will be in Beta)
+- "Sarah Wilson" (will be in Beta)
+
+Vessels (4):
+- "F/V Northern Light" owned by John Smith
+- "F/V Sea Spray" owned by Jane Doe
+- "F/V Pacific Star" owned by Bob Johnson
+- "F/V Ocean Quest" owned by Sarah Wilson
+
+Cooperative Memberships:
+- Link each member to their cooperative (effective_from: 2025-01-01, effective_to: null)
+
+Vessel Cooperative Assignments:
+- Link each vessel to their owner's cooperative (effective_from: 2025-01-01, effective_to: null)
+
+The script should:
+- Use the supabase client from app.config
+- Insert in the correct order (cooperatives first, then members, etc.)
+- Print what was inserted
+- Handle errors gracefully
+```
+
+### Manual Step ✅
+- [x] Run: `python scripts/insert_test_data.py`
+- [x] Verify data appears in Supabase Table Editor
+
+### Prompt 10: View Rosters Page
 ```
 Create app/pages/rosters.py that shows three tabs:
 - Cooperatives: table listing all cooperatives
@@ -162,7 +189,7 @@ Use the historical tracking tables to show current assignments (where effective_
 Include search/filter capability.
 ```
 
-### Prompt 10: Manage Cooperatives (Admin)
+### Prompt 11: Manage Cooperatives (Admin)
 ```
 Create app/pages/admin/manage_coops.py following templates/crud_page_template.md
 
@@ -172,7 +199,7 @@ Fields:
 - contact_info (text, optional)
 ```
 
-### Prompt 11: Manage Members (Admin)
+### Prompt 12: Manage Members (Admin)
 ```
 Create app/pages/admin/manage_members.py following templates/crud_page_template.md
 
@@ -182,7 +209,7 @@ Fields:
 - contact_info (text, optional)
 ```
 
-### Prompt 12: Manage Vessels (Admin)
+### Prompt 13: Manage Vessels (Admin)
 ```
 Create app/pages/admin/manage_vessels.py following templates/crud_page_template.md
 
@@ -193,7 +220,7 @@ Fields:
 - member_id (foreign key to members, required, show as dropdown of member names)
 ```
 
-### Prompt 13: Manage Member-Cooperative Assignments (Admin)
+### Prompt 14: Manage Member-Cooperative Assignments (Admin)
 ```
 Create app/pages/admin/manage_member_coops.py following templates/crud_page_template.md
 
@@ -210,7 +237,7 @@ Show current assignments by default. Add toggle to show historical.
 "End Assignment" sets effective_to instead of deleting.
 ```
 
-### Prompt 14: Manage Vessel-Cooperative Assignments (Admin)
+### Prompt 15: Manage Vessel-Cooperative Assignments (Admin)
 ```
 Create app/pages/admin/manage_vessel_coops.py following templates/crud_page_template.md
 
@@ -227,7 +254,7 @@ Show current assignments by default. Add toggle to show historical.
 "End Assignment" sets effective_to instead of deleting.
 ```
 
-### Prompt 15: Manage Processors (Admin)
+### Prompt 16: Manage Processors (Admin)
 ```
 Create app/pages/admin/manage_processors.py following templates/crud_page_template.md
 
@@ -240,7 +267,7 @@ Fields:
 ### Info Needed from Co-op Manager
 - [ ] Initial roster data to load
 
-### Prompt 16: Load Initial Data Script
+### Prompt 17: Load Initial Data Script
 ```
 Create scripts/load_initial_data.py that:
 - Reads roster data from a CSV or Excel file
@@ -259,7 +286,7 @@ I'll provide the data file format after I receive it from the co-op manager.
 
 ## File Uploads (January 2026)
 
-### Prompt 16: Set Up Storage
+### Prompt 18: Set Up Storage
 ```
 Create app/utils/storage.py that:
 - Uploads files to Supabase Storage (bucket name: 'uploads')
@@ -271,7 +298,7 @@ Create app/utils/storage.py that:
 ### Manual Step
 - [ ] Create 'uploads' bucket in Supabase Storage dashboard
 
-### Prompt 17: File Upload Page
+### Prompt 19: File Upload Page
 ```
 Create app/pages/upload.py that:
 - Lets user select a cooperative from dropdown
@@ -287,7 +314,7 @@ Create app/pages/upload.py that:
 - [ ] Sample eLandings file with column descriptions
 - [ ] Sample fish ticket file with column descriptions
 
-### Prompt 18: eLandings Parser
+### Prompt 20: eLandings Parser
 ```
 Create app/utils/parsers.py with a function parse_elandings(file) that:
 - Reads the uploaded CSV/Excel file
@@ -300,7 +327,7 @@ Here is a sample file: [attach sample]
 Here are the column mappings: [provide mappings after reviewing sample]
 ```
 
-### Prompt 19: Fish Ticket Parser
+### Prompt 21: Fish Ticket Parser
 ```
 Add to app/utils/parsers.py a function parse_fish_ticket(file) that:
 - Reads the uploaded CSV/Excel file
@@ -313,7 +340,7 @@ Here is a sample file: [attach sample]
 Here are the column mappings: [provide mappings after reviewing sample]
 ```
 
-### Prompt 20: Connect Parsers to Upload Page
+### Prompt 22: Connect Parsers to Upload Page
 ```
 Update app/pages/upload.py to:
 - After file upload, call the appropriate parser based on source_type
@@ -331,7 +358,7 @@ Update app/pages/upload.py to:
 - [ ] Quota allocation hierarchy clarification
 - [ ] Sample quota allocation data
 
-### Prompt 21: Manage Seasons (Admin)
+### Prompt 23: Manage Seasons (Admin)
 ```
 Create app/pages/admin/manage_seasons.py following templates/crud_page_template.md
 
@@ -344,7 +371,7 @@ Fields:
 Note: Only allow delete if no data is linked to this season.
 ```
 
-### Prompt 22: Manage Species (Admin)
+### Prompt 24: Manage Species (Admin)
 ```
 Create app/pages/admin/manage_species.py following templates/crud_page_template.md
 
@@ -358,7 +385,7 @@ In the table view, highlight rows where is_psc is true.
 Note: Only allow delete if no data is linked to this species.
 ```
 
-### Prompt 23: View Quota Allocations
+### Prompt 25: View Quota Allocations
 ```
 Create app/pages/quotas.py that shows:
 - Filter by season (dropdown, default to current)
@@ -367,7 +394,7 @@ Create app/pages/quotas.py that shows:
 - Totals by cooperative and species
 ```
 
-### Prompt 24: Manage Quota Allocations (Admin)
+### Prompt 26: Manage Quota Allocations (Admin)
 ```
 Create app/pages/admin/manage_quotas.py following templates/crud_page_template.md
 
@@ -384,7 +411,7 @@ Add filters for season and cooperative at the top.
 Include a bulk upload option for CSV/Excel files.
 ```
 
-### Prompt 25: Record Quota Transfers
+### Prompt 27: Record Quota Transfers
 ```
 Create app/pages/quota_transfers.py that lets co-op manager:
 - View recent transfers
@@ -392,7 +419,7 @@ Create app/pages/quota_transfers.py that lets co-op manager:
 - This is available to co_op_manager role, not just admin
 ```
 
-### Prompt 26: Quota Dashboard
+### Prompt 28: Quota Dashboard
 ```
 Create app/pages/dashboard.py (or update if exists) with a quota section that shows:
 - Filter by season and cooperative
@@ -405,7 +432,7 @@ Create app/pages/dashboard.py (or update if exists) with a quota section that sh
 
 ## PSC Tracking (February 2026)
 
-### Prompt 27: Manage PSC Limits (Admin)
+### Prompt 29: Manage PSC Limits (Admin)
 ```
 Create app/pages/admin/manage_psc_limits.py following templates/crud_page_template.md
 
@@ -420,7 +447,7 @@ Filter the species dropdown to only show PSC species.
 Add filters for season and cooperative at the top.
 ```
 
-### Prompt 28: View PSC Events
+### Prompt 30: View PSC Events
 ```
 Create app/pages/psc.py that shows:
 - Filter by season, cooperative
@@ -428,7 +455,7 @@ Create app/pages/psc.py that shows:
 - Running total vs limit for each species
 ```
 
-### Prompt 29: PSC Dashboard
+### Prompt 31: PSC Dashboard
 ```
 Update app/pages/dashboard.py to add a PSC section that shows:
 - Filter by season and cooperative
@@ -445,7 +472,7 @@ Update app/pages/dashboard.py to add a PSC section that shows:
 - [ ] Example of CQ application format
 - [ ] Example of meeting packet format
 
-### Prompt 30: CQ Application Export
+### Prompt 32: CQ Application Export
 ```
 Create app/pages/exports.py with a CQ Application section that:
 - Lets user select season and cooperative
@@ -456,7 +483,7 @@ Create app/pages/exports.py with a CQ Application section that:
 Here is the required format: [provide format after receiving from co-op manager]
 ```
 
-### Prompt 31: Meeting Packet Export
+### Prompt 33: Meeting Packet Export
 ```
 Update app/pages/exports.py to add a Meeting Packet section that:
 - Lets user select season and cooperative
@@ -472,7 +499,7 @@ Here is an example: [provide example after receiving from co-op manager]
 
 ## Harvest Tracking (April 2026)
 
-### Prompt 32: View Harvests
+### Prompt 34: View Harvests
 ```
 Create app/pages/harvests.py that shows:
 - Filter by season, cooperative, vessel, date range
@@ -481,7 +508,7 @@ Create app/pages/harvests.py that shows:
 - Export to CSV option
 ```
 
-### Prompt 33: Harvest vs Quota Dashboard
+### Prompt 35: Harvest vs Quota Dashboard
 ```
 Update app/pages/dashboard.py to add a harvest section that shows:
 - Filter by season and cooperative
@@ -498,7 +525,7 @@ Update app/pages/dashboard.py to add a harvest section that shows:
 ### Info Needed from Co-op Manager
 - [ ] Example of Intercooperative Report format
 
-### Prompt 34: Intercooperative Report Export
+### Prompt 36: Intercooperative Report Export
 ```
 Update app/pages/exports.py to add Intercooperative Report section that:
 - Generates tables and figures required for the Council report
@@ -518,7 +545,7 @@ Here is the required format: [provide format after receiving from co-op manager]
 - [ ] Ex-vessel value calculation method
 - [ ] Processor report format for reconciliation
 
-### Prompt 35: Ex-Vessel Value Reports
+### Prompt 37: Ex-Vessel Value Reports
 ```
 [Prompt depends on clarification from co-op manager about how value is calculated]
 
@@ -526,7 +553,7 @@ Create reporting for ex-vessel value that:
 - [Details TBD based on value calculation method]
 ```
 
-### Prompt 36: Processor Report Parser
+### Prompt 38: Processor Report Parser
 ```
 Add to app/utils/parsers.py a function parse_processor_report(file) that:
 - Reads processor report CSV/Excel
@@ -536,7 +563,7 @@ Add to app/utils/parsers.py a function parse_processor_report(file) that:
 Here is a sample file: [attach sample]
 ```
 
-### Prompt 37: Reconciliation Tool
+### Prompt 39: Reconciliation Tool
 ```
 Create app/pages/reconciliation.py that:
 - Lets user upload a processor report
@@ -549,7 +576,7 @@ Create app/pages/reconciliation.py that:
 
 ## End of Season (October - November 2026)
 
-### Prompt 38: Settlement Analytics
+### Prompt 40: Settlement Analytics
 ```
 Create app/pages/settlement.py that shows:
 - By cooperative: total harvest value, overages, amounts owed
@@ -558,7 +585,7 @@ Create app/pages/settlement.py that shows:
 - Export settlement summaries
 ```
 
-### Prompt 39: Final Summaries Export
+### Prompt 41: Final Summaries Export
 ```
 Update app/pages/exports.py to add End of Season section that:
 - Final quota usage by cooperative (for Board review)
@@ -571,7 +598,7 @@ Update app/pages/exports.py to add End of Season section that:
 
 ## Wrap-up (December 2026)
 
-### Prompt 40: Documentation
+### Prompt 42: Documentation
 ```
 Update README.md with:
 - Project overview
@@ -582,7 +609,7 @@ Update README.md with:
 - Troubleshooting common issues
 ```
 
-### Prompt 41: Code Cleanup
+### Prompt 43: Code Cleanup
 ```
 Review the codebase and:
 - Remove any unused code or comments
