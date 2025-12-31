@@ -286,7 +286,7 @@ I'll provide the data file format after I receive it from the co-op manager.
 
 ## File Uploads (January 2026)
 
-### Prompt 18: Set Up Storage
+### Prompt 18: Set Up Storage ✅
 ```
 Create app/utils/storage.py that:
 - Uploads files to Supabase Storage (bucket name: 'uploads')
@@ -295,10 +295,10 @@ Create app/utils/storage.py that:
 - Handles errors gracefully
 ```
 
-### Manual Step
-- [ ] Create 'uploads' bucket in Supabase Storage dashboard
+### Manual Step ✅
+- [x] Create 'uploads' bucket in Supabase Storage dashboard
 
-### Prompt 19: File Upload Page
+### Prompt 19: File Upload Page ✅
 ```
 Create app/pages/upload.py that:
 - Lets user select a cooperative from dropdown
@@ -314,17 +314,22 @@ Create app/pages/upload.py that:
 - [ ] Sample eLandings file with column descriptions
 - [ ] Sample fish ticket file with column descriptions
 
-### Prompt 20: eLandings Parser
+### Prompt 20: eFish Parser ✅
 ```
-Create app/utils/parsers.py with a function parse_elandings(file) that:
+Create app/utils/parsers.py with a function parse_efish(file) that:
 - Reads the uploaded CSV/Excel file
 - Validates required columns exist
 - Maps columns to our harvests table schema
 - Returns a list of validated records ready for insert
 - Raises clear errors for validation failures
 
-Here is a sample file: [attach sample]
-Here are the column mappings: [provide mappings after reviewing sample]
+Column mappings:
+- landing_date → landed_date
+- vessel_id → vessel_id (UUID lookup by vessel_id_number)
+- species_code → species_id (UUID lookup)
+- processor_name → processor_id (UUID lookup)
+- pounds → amount
+- price_per_lb → stored for ex-vessel calculations
 ```
 
 ### Prompt 21: Fish Ticket Parser

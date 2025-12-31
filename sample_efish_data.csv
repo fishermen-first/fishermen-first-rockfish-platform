@@ -1,13 +1,13 @@
 landing_date,vessel_name,vessel_id,species_code,species_name,pounds,price_per_lb,processor_name,stat_area,trip_id
-2025-07-15,F/V Northern Light,ADF&G-001,141,Pacific Ocean Perch,12500,0.85,Kodiak Seafoods,525630,TRIP-2025-001
-2025-07-15,F/V Northern Light,ADF&G-001,137,Dusky Rockfish,8200,0.72,Kodiak Seafoods,525630,TRIP-2025-001
-2025-07-15,F/V Northern Light,ADF&G-001,193,Northern Rockfish,4300,0.68,Kodiak Seafoods,525630,TRIP-2025-001
-2025-07-18,F/V Sea Spray,ADF&G-002,141,Pacific Ocean Perch,15800,0.85,Westward Seafoods,525631,TRIP-2025-002
-2025-07-18,F/V Sea Spray,ADF&G-002,137,Dusky Rockfish,6100,0.72,Westward Seafoods,525631,TRIP-2025-002
-2025-07-22,F/V Pacific Star,ADF&G-003,141,Pacific Ocean Perch,11200,0.87,Kodiak Seafoods,525702,TRIP-2025-003
-2025-07-22,F/V Pacific Star,ADF&G-003,137,Dusky Rockfish,7800,0.72,Kodiak Seafoods,525702,TRIP-2025-003
-2025-07-22,F/V Pacific Star,ADF&G-003,193,Northern Rockfish,3200,0.68,Kodiak Seafoods,525702,TRIP-2025-003
-2025-07-25,F/V Ocean Quest,ADF&G-004,141,Pacific Ocean Perch,9800,0.85,Westward Seafoods,525630,TRIP-2025-004
-2025-07-25,F/V Ocean Quest,ADF&G-004,137,Dusky Rockfish,5500,0.72,Westward Seafoods,525630,TRIP-2025-004
-2025-07-28,F/V Northern Light,ADF&G-001,141,Pacific Ocean Perch,14200,0.86,Kodiak Seafoods,525631,TRIP-2025-005
-2025-07-28,F/V Northern Light,ADF&G-001,137,Dusky Rockfish,9100,0.72,Kodiak Seafoods,525631,TRIP-2025-005
+2025-07-15,F/V Northern Light,AK-001-NL,141,Pacific Ocean Perch,12500,0.85,Kodiak Seafoods,525630,TRIP-2025-001
+2025-07-15,F/V Northern Light,AK-001-NL,137,Dusky Rockfish,8200,0.72,Kodiak Seafoods,525630,TRIP-2025-001
+2025-07-15,F/V Northern Light,AK-001-NL,193,Northern Rockfish,4300,0.68,Kodiak Seafoods,525630,TRIP-2025-001
+2025-07-18,F/V Sea Spray,AK-002-SS,141,Pacific Ocean Perch,15800,0.85,Westward Seafoods,525631,TRIP-2025-002
+2025-07-18,F/V Sea Spray,AK-002-SS,137,Dusky Rockfish,6100,0.72,Westward Seafoods,525631,TRIP-2025-002
+2025-07-22,F/V Pacific Star,AK-003-PS,141,Pacific Ocean Perch,11200,0.87,Kodiak Seafoods,525702,TRIP-2025-003
+2025-07-22,F/V Pacific Star,AK-003-PS,137,Dusky Rockfish,7800,0.72,Kodiak Seafoods,525702,TRIP-2025-003
+2025-07-22,F/V Pacific Star,AK-003-PS,193,Northern Rockfish,3200,0.68,Kodiak Seafoods,525702,TRIP-2025-003
+2025-07-25,F/V Ocean Quest,AK-004-OQ,141,Pacific Ocean Perch,9800,0.85,Westward Seafoods,525630,TRIP-2025-004
+2025-07-25,F/V Ocean Quest,AK-004-OQ,137,Dusky Rockfish,5500,0.72,Westward Seafoods,525630,TRIP-2025-004
+2025-07-28,F/V Northern Light,AK-001-NL,141,Pacific Ocean Perch,14200,0.86,Kodiak Seafoods,525631,TRIP-2025-005
+2025-07-28,F/V Northern Light,AK-001-NL,137,Dusky Rockfish,9100,0.72,Kodiak Seafoods,525631,TRIP-2025-005

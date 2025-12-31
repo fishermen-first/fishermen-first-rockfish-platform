@@ -31,60 +31,61 @@
 ---
 
 ## File Uploads (January 2026)
-- [ ] 17. Set up file storage
-- [ ] 18. Build file upload page
-- [ ] 19. Build parser for first data source (eLandings or fish tickets)
-- [ ] 20. Build parsers for remaining data sources
+- [x] 17. Set up file storage
+- [x] 18. Build file upload page
+- [x] 19. Build eFish parser
+- [ ] 20. Connect parser to upload page with preview/confirm
+- [ ] 21. Build parsers for remaining data sources (eLandings, fish tickets)
 
 ---
 
 ## Quota Tracking (February 2026)
-- [ ] 21. Build page to view quota allocations
-- [ ] 22. Build admin page to add/edit quota allocations
-- [ ] 23. Build page to record quota transfers
-- [ ] 24. Build dashboard showing quota remaining by vessel/cooperative
+- [ ] 22. Build page to view quota allocations
+- [ ] 23. Build admin page to add/edit quota allocations
+- [ ] 24. Build page to record quota transfers
+- [ ] 25. Build dashboard showing quota remaining by vessel/cooperative
 
 ---
 
 ## PSC Tracking (February 2026)
-- [ ] 25. Build page to view PSC limits
-- [ ] 26. Build page to view PSC events
-- [ ] 27. Build dashboard showing PSC usage vs limits
+- [ ] 26. Build page to view PSC limits
+- [ ] 27. Build page to view PSC events
+- [ ] 28. Build dashboard showing PSC usage vs limits
 
 ---
 
 ## Reporting - Pre-Season (February - March 2026)
-- [ ] 28. Build export for CQ applications (quota tables) — due March 1
-- [ ] 29. Build export for meeting packets
+- [ ] 29. Build export for CQ applications (quota tables) — due March 1
+- [ ] 30. Build export for meeting packets
 
 ---
 
 ## Harvest Tracking (April 2026)
-- [ ] 30. Build page to view harvests
-- [ ] 31. Build dashboard showing harvests vs quota
+- [ ] 31. Build page to view harvests
+- [ ] 32. Build dashboard showing harvests vs quota
 
 ---
 
 ## Reporting - In-Season (June 2026)
-- [ ] 32. Build export for Intercooperative Report
+- [ ] 33. Build export for Intercooperative Report
 
 ---
 
 ## Refinements (July - September 2026)
-- [ ] 33. Build ex-vessel value reports
-- [ ] 34. Build reconciliation tools for processor reports
+- [ ] 34. Build ex-vessel value reports
+- [ ] 35. Build reconciliation tools for processor reports
 
 ---
 
 ## End of Season (October - November 2026)
-- [ ] 35. Build settlement/overage analytics
-- [ ] 36. Test reconciliation with real end-of-season data
+- [ ] 36. Build settlement/overage analytics
+- [ ] 37. Test reconciliation with real end-of-season data
 
 ---
 
 ## Wrap-up (December 2026)
-- [ ] 37. Fix bugs and refine based on feedback
-- [ ] 38. Document the system
+- [ ] 38. Fix bugs and refine based on feedback
+- [ ] 39. Document the system
 
 ---
 
@@ -110,7 +111,7 @@
 | Setup | Jan | 4 | 4 |
 | Foundation | Jan | 4 | 4 |
 | Rosters | Jan | 8 | 7 |
-| File Uploads | Jan | 4 | 0 |
+| File Uploads | Jan | 5 | 3 |
 | Quota Tracking | Feb | 4 | 0 |
 | PSC Tracking | Feb | 3 | 0 |
 | Reporting - Pre-Season | Feb-Mar | 2 | 0 |
@@ -119,4 +120,4 @@
 | Refinements | Jul-Sep | 2 | 0 |
 | End of Season | Oct-Nov | 2 | 0 |
 | Wrap-up | Dec | 2 | 0 |
-| **Total** | | **38** | **15** |
+| **Total** | | **39** | **18** |

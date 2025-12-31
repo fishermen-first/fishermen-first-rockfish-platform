@@ -16,8 +16,38 @@ def main():
     print("Inserting test data into Supabase...\n")
 
     try:
-        # 1. Insert Cooperatives
-        print("1. Inserting cooperatives...")
+        # 1. Insert Species
+        print("1. Inserting species...")
+        species = [
+            {"species_code": "141", "species_name": "Pacific Ocean Perch", "is_psc": False},
+            {"species_code": "137", "species_name": "Dusky Rockfish", "is_psc": False},
+            {"species_code": "193", "species_name": "Northern Rockfish", "is_psc": False},
+        ]
+        species_response = supabase.table("species").insert(species).execute()
+        species_data = species_response.data
+        print(f"   Inserted {len(species_data)} species")
+
+        # 2. Insert Processors
+        print("2. Inserting processors...")
+        processors = [
+            {"processor_name": "Kodiak Seafoods", "contact_info": "kodiak@seafoods.example.com"},
+            {"processor_name": "Westward Seafoods", "contact_info": "westward@seafoods.example.com"},
+        ]
+        processors_response = supabase.table("processors").insert(processors).execute()
+        processors_data = processors_response.data
+        print(f"   Inserted {len(processors_data)} processors")
+
+        # 3. Insert Seasons
+        print("3. Inserting seasons...")
+        seasons = [
+            {"year": 2025, "start_date": "2025-07-01", "end_date": "2025-09-30"},
+        ]
+        seasons_response = supabase.table("seasons").insert(seasons).execute()
+        seasons_data = seasons_response.data
+        print(f"   Inserted {len(seasons_data)} seasons")
+
+        # 4. Insert Cooperatives
+        print("4. Inserting cooperatives...")
         cooperatives = [
             {"cooperative_name": "Rockfish Co-op Alpha", "contact_info": "alpha@rockfish.example.com"},
             {"cooperative_name": "Rockfish Co-op Beta", "contact_info": "beta@rockfish.example.com"},
@@ -31,8 +61,8 @@ def main():
         alpha_id = coop_ids["Rockfish Co-op Alpha"]
         beta_id = coop_ids["Rockfish Co-op Beta"]
 
-        # 2. Insert Members
-        print("2. Inserting members...")
+        # 5. Insert Members
+        print("5. Inserting members...")
         members = [
             {"member_name": "John Smith", "contact_info": "john.smith@example.com"},
             {"member_name": "Jane Doe", "contact_info": "jane.doe@example.com"},
@@ -46,8 +76,8 @@ def main():
         # Map member names to IDs
         member_ids = {m["member_name"]: m["id"] for m in member_data}
 
-        # 3. Insert Vessels
-        print("3. Inserting vessels...")
+        # 6. Insert Vessels
+        print("6. Inserting vessels...")
         vessels = [
             {
                 "vessel_name": "F/V Northern Light",
@@ -77,8 +107,8 @@ def main():
         # Map vessel names to IDs
         vessel_ids = {v["vessel_name"]: v["id"] for v in vessel_data}
 
-        # 4. Insert Cooperative Memberships
-        print("4. Inserting cooperative memberships...")
+        # 7. Insert Cooperative Memberships
+        print("7. Inserting cooperative memberships...")
         memberships = [
             # Alpha co-op members
             {
@@ -110,8 +140,8 @@ def main():
         membership_response = supabase.table("cooperative_memberships").insert(memberships).execute()
         print(f"   Inserted {len(membership_response.data)} cooperative memberships")
 
-        # 5. Insert Vessel Cooperative Assignments
-        print("5. Inserting vessel cooperative assignments...")
+        # 8. Insert Vessel Cooperative Assignments
+        print("8. Inserting vessel cooperative assignments...")
         assignments = [
             # Alpha co-op vessels
             {
@@ -147,6 +177,9 @@ def main():
         print("Test data inserted successfully!")
         print("=" * 50)
         print("\nSummary:")
+        print(f"  - Species: {len(species_data)}")
+        print(f"  - Processors: {len(processors_data)}")
+        print(f"  - Seasons: {len(seasons_data)}")
         print(f"  - Cooperatives: {len(coop_data)}")
         print(f"  - Members: {len(member_data)}")
         print(f"  - Vessels: {len(vessel_data)}")
