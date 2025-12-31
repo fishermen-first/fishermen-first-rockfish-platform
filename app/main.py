@@ -142,7 +142,8 @@ def show_admin_page():
         manage_members.show()
 
     with tabs[2]:
-        st.info("🚧 Manage Vessels - Coming soon")
+        from app.pages.admin import manage_vessels
+        manage_vessels.show()
 
     with tabs[3]:
         st.info("🚧 Manage Processors - Coming soon")
