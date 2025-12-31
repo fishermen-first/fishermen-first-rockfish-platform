@@ -138,7 +138,8 @@ def show_admin_page():
         manage_coops.show()
 
     with tabs[1]:
-        st.info("🚧 Manage Members - Coming soon")
+        from app.pages.admin import manage_members
+        manage_members.show()
 
     with tabs[2]:
         st.info("🚧 Manage Vessels - Coming soon")

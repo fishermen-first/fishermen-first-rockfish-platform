@@ -1,5 +1,5 @@
 """
-Manage Cooperatives - Admin CRUD page for cooperatives table.
+Manage Members - Admin CRUD page for members table.
 """
 
 import streamlit as st
@@ -8,9 +8,9 @@ from app.config import supabase
 from app.auth import require_role
 
 # Table and display configuration
-TABLE_NAME = "cooperatives"
-PAGE_TITLE = "Manage Cooperatives"
-ITEM_NAME = "cooperative"
+TABLE_NAME = "members"
+PAGE_TITLE = "Manage Members"
+ITEM_NAME = "member"
 
 
 def show():
@@ -25,7 +25,7 @@ def show():
     # Header with Add button
     col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button(f"+ Add {ITEM_NAME.title()}", use_container_width=True, key="coops_add_btn"):
+        if st.button(f"+ Add {ITEM_NAME.title()}", use_container_width=True, key="members_add_btn"):
             st.session_state[f"{TABLE_NAME}_mode"] = "add"
             st.session_state[f"{TABLE_NAME}_selected_id"] = None
 
@@ -76,9 +76,9 @@ def reset_mode():
 # =============================================================================
 
 def fetch_data() -> pd.DataFrame:
-    """Fetch all cooperatives from the table."""
+    """Fetch all members from the table."""
     try:
-        response = supabase.table(TABLE_NAME).select("*").order("cooperative_name").execute()
+        response = supabase.table(TABLE_NAME).select("*").order("member_name").execute()
         if response.data:
             return pd.DataFrame(response.data)
         return pd.DataFrame()
@@ -88,7 +88,7 @@ def fetch_data() -> pd.DataFrame:
 
 
 def fetch_record(record_id: str) -> dict | None:
-    """Fetch a single cooperative by ID."""
+    """Fetch a single member by ID."""
     try:
         response = supabase.table(TABLE_NAME).select("*").eq("id", record_id).single().execute()
         return response.data
@@ -103,10 +103,10 @@ def fetch_record(record_id: str) -> dict | None:
 
 def display_data_table(data: pd.DataFrame):
     """Display data table with row selection."""
-    display_columns = ["cooperative_name", "contact_info"]
+    display_columns = ["member_name", "contact_info"]
 
     column_config = {
-        "cooperative_name": st.column_config.TextColumn("Cooperative Name"),
+        "member_name": st.column_config.TextColumn("Member Name"),
         "contact_info": st.column_config.TextColumn("Contact Info"),
     }
 
@@ -117,7 +117,7 @@ def display_data_table(data: pd.DataFrame):
         column_config=column_config,
         on_select="rerun",
         selection_mode="multi-row",
-        key="coops_table",
+        key="members_table",
     )
 
     if selection and selection.selection.rows:
@@ -135,14 +135,14 @@ def show_action_buttons():
 
     with col1:
         edit_disabled = len(selected_ids) != 1
-        if st.button("Edit Selected", disabled=edit_disabled, use_container_width=True, key="coops_edit_btn"):
+        if st.button("Edit Selected", disabled=edit_disabled, use_container_width=True, key="members_edit_btn"):
             st.session_state[f"{TABLE_NAME}_mode"] = "edit"
             st.session_state[f"{TABLE_NAME}_selected_id"] = selected_ids[0]
             st.rerun()
 
     with col2:
         delete_disabled = len(selected_ids) == 0
-        if st.button("Delete Selected", disabled=delete_disabled, use_container_width=True, key="coops_delete_btn"):
+        if st.button("Delete Selected", disabled=delete_disabled, use_container_width=True, key="members_delete_btn"):
             st.session_state[f"{TABLE_NAME}_show_delete_dialog"] = True
             st.rerun()
 
@@ -163,12 +163,12 @@ def show_form(data: pd.DataFrame):
     title = f"Edit {ITEM_NAME.title()}" if is_edit else f"Add New {ITEM_NAME.title()}"
 
     with st.expander(title, expanded=True):
-        with st.form(key="coops_form"):
-            cooperative_name = st.text_input(
-                "Cooperative Name *",
-                value=existing.get("cooperative_name", ""),
-                placeholder="Enter cooperative name",
-                key="coops_name_input",
+        with st.form(key="members_form"):
+            member_name = st.text_input(
+                "Member Name *",
+                value=existing.get("member_name", ""),
+                placeholder="Enter member name",
+                key="members_name_input",
             )
 
             contact_info = st.text_area(
@@ -176,7 +176,7 @@ def show_form(data: pd.DataFrame):
                 value=existing.get("contact_info", "") or "",
                 placeholder="Address, phone, email, etc.",
                 height=100,
-                key="coops_contact_input",
+                key="members_contact_input",
             )
 
             col1, col2 = st.columns(2)
@@ -194,12 +194,12 @@ def show_form(data: pd.DataFrame):
                 st.rerun()
 
             if submitted:
-                if not cooperative_name:
-                    st.error("Cooperative Name is required.")
+                if not member_name:
+                    st.error("Member Name is required.")
                     return
 
                 record_data = {
-                    "cooperative_name": cooperative_name.strip(),
+                    "member_name": member_name.strip(),
                     "contact_info": contact_info.strip() if contact_info else None,
                 }
 
@@ -226,11 +226,11 @@ def show_delete_dialog():
     @st.dialog(f"Delete {ITEM_NAME.title()}(s)")
     def confirm_delete():
         st.warning(f"Are you sure you want to delete {count} {ITEM_NAME}(s)? This cannot be undone.")
-        st.caption("Note: Cooperatives with associated members or vessels cannot be deleted.")
+        st.caption("Note: Members with associated vessels cannot be deleted.")
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Yes, Delete", use_container_width=True, type="primary", key="coops_confirm_delete_btn"):
+            if st.button("Yes, Delete", use_container_width=True, type="primary", key="members_confirm_delete_btn"):
                 success_count = 0
                 for record_id in selected_ids:
                     if delete_record(record_id):
@@ -241,14 +241,14 @@ def show_delete_dialog():
                 elif success_count > 0:
                     st.warning(f"Deleted {success_count} of {count} {ITEM_NAME}(s). Some could not be deleted due to existing relationships.")
                 else:
-                    st.error("Could not delete. Cooperatives may have associated members or vessels.")
+                    st.error("Could not delete. Members may have associated vessels.")
 
                 st.session_state[f"{TABLE_NAME}_show_delete_dialog"] = False
                 reset_mode()
                 st.rerun()
 
         with col2:
-            if st.button("Cancel", use_container_width=True, key="coops_cancel_delete_btn"):
+            if st.button("Cancel", use_container_width=True, key="members_cancel_delete_btn"):
                 st.session_state[f"{TABLE_NAME}_show_delete_dialog"] = False
                 st.rerun()
 
@@ -260,42 +260,42 @@ def show_delete_dialog():
 # =============================================================================
 
 def create_record(data: dict) -> bool:
-    """Create a new cooperative."""
+    """Create a new member."""
     try:
         supabase.table(TABLE_NAME).insert(data).execute()
         return True
     except Exception as e:
         error_msg = str(e)
         if "duplicate key" in error_msg.lower():
-            st.error("A cooperative with this name already exists.")
+            st.error("A member with this name already exists.")
         else:
             st.error(f"Error creating {ITEM_NAME}: {e}")
         return False
 
 
 def update_record(record_id: str, data: dict) -> bool:
-    """Update an existing cooperative."""
+    """Update an existing member."""
     try:
         supabase.table(TABLE_NAME).update(data).eq("id", record_id).execute()
         return True
     except Exception as e:
         error_msg = str(e)
         if "duplicate key" in error_msg.lower():
-            st.error("A cooperative with this name already exists.")
+            st.error("A member with this name already exists.")
         else:
             st.error(f"Error updating {ITEM_NAME}: {e}")
         return False
 
 
 def delete_record(record_id: str) -> bool:
-    """Delete a cooperative by ID."""
+    """Delete a member by ID."""
     try:
         supabase.table(TABLE_NAME).delete().eq("id", record_id).execute()
         return True
     except Exception as e:
         error_msg = str(e)
         if "foreign key" in error_msg.lower():
-            st.error("Cannot delete: this cooperative has associated members or vessels.")
+            st.error("Cannot delete: this member has associated vessels.")
         else:
             st.error(f"Error deleting {ITEM_NAME}: {e}")
         return False
