@@ -8,6 +8,7 @@ from datetime import datetime
 from app.config import supabase
 from app.auth import require_auth, get_current_user
 from app.utils.storage import upload_file
+from app.utils.parsers import parse_efish, get_harvest_records, ParseError, ValidationError
 
 # Allowed file types
 ALLOWED_EXTENSIONS = ["csv", "xlsx", "xls"]
@@ -21,8 +22,20 @@ def show():
 
     st.title("Upload Data")
 
-    # Upload form
-    show_upload_form()
+    # Initialize session state for preview
+    if "upload_preview_data" not in st.session_state:
+        st.session_state.upload_preview_data = None
+    if "upload_preview_file_upload_id" not in st.session_state:
+        st.session_state.upload_preview_file_upload_id = None
+    if "upload_preview_error" not in st.session_state:
+        st.session_state.upload_preview_error = None
+
+    # Check if we're in preview mode (either with data or with errors)
+    if st.session_state.upload_preview_data is not None or st.session_state.upload_preview_error is not None:
+        show_preview()
+    else:
+        # Upload form
+        show_upload_form()
 
     st.divider()
 
@@ -75,18 +88,162 @@ def show_upload_form():
             return
 
         with st.spinner("Uploading..."):
-            success = process_upload(
+            success, file_upload_id = process_upload(
                 file=uploaded_file,
                 cooperative_id=selected_coop_id,
                 source_type=selected_source_type,
             )
 
-        if success:
+        if success and selected_source_type == "eFish":
+            # Parse the file and show preview
+            uploaded_file.seek(0)
+            try:
+                parsed_records = parse_efish(uploaded_file, uploaded_file.name)
+                st.session_state.upload_preview_data = parsed_records
+                st.session_state.upload_preview_file_upload_id = file_upload_id
+                st.session_state.upload_preview_error = None
+                st.rerun()
+            except ValidationError as e:
+                st.session_state.upload_preview_data = None
+                st.session_state.upload_preview_error = str(e)
+                st.session_state.upload_preview_file_upload_id = file_upload_id
+                st.rerun()
+            except ParseError as e:
+                st.error(f"Parse error: {e}")
+        elif success:
             st.success(f"File '{uploaded_file.name}' uploaded successfully!")
             st.rerun()
 
 
-def process_upload(file, cooperative_id: str, source_type: str) -> bool:
+def show_preview():
+    """Display parsed data preview for confirmation."""
+    st.subheader("Preview Parsed Data")
+
+    # Check if there's an error
+    if st.session_state.upload_preview_error:
+        st.error("Validation Errors")
+        st.code(st.session_state.upload_preview_error)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Cancel", key="upload_preview_cancel_error", use_container_width=True):
+                clear_preview_state()
+                st.rerun()
+        with col2:
+            st.info("Fix the errors in your file and try again.")
+        return
+
+    # Show parsed data
+    parsed_records = st.session_state.upload_preview_data
+
+    if not parsed_records:
+        st.warning("No records parsed from the file.")
+        if st.button("Back", key="upload_preview_back_empty"):
+            clear_preview_state()
+            st.rerun()
+        return
+
+    st.success(f"Successfully parsed {len(parsed_records)} records")
+
+    # Create preview DataFrame
+    preview_data = []
+    for rec in parsed_records[:10]:
+        preview_data.append({
+            "Landed Date": rec.get("landed_date", ""),
+            "Vessel": rec.get("_vessel_id_number", ""),
+            "Species": rec.get("_species_code", ""),
+            "Amount (lbs)": rec.get("amount", 0),
+            "Price/lb": rec.get("_price_per_lb", ""),
+            "Processor": rec.get("_processor_name", ""),
+        })
+
+    preview_df = pd.DataFrame(preview_data)
+
+    st.caption(f"Showing first {min(10, len(parsed_records))} of {len(parsed_records)} records:")
+    st.dataframe(
+        preview_df,
+        use_container_width=True,
+        hide_index=True,
+        key="upload_preview_table",
+    )
+
+    # Confirm/Cancel buttons
+    st.divider()
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Cancel", key="upload_preview_cancel_btn", use_container_width=True):
+            clear_preview_state()
+            st.rerun()
+
+    with col2:
+        if st.button("Confirm & Import", type="primary", key="upload_preview_confirm_btn", use_container_width=True):
+            with st.spinner("Importing records..."):
+                success = import_harvest_records(
+                    parsed_records,
+                    st.session_state.upload_preview_file_upload_id
+                )
+
+            if success:
+                st.success(f"Successfully imported {len(parsed_records)} harvest records!")
+                clear_preview_state()
+                st.rerun()
+
+
+def clear_preview_state():
+    """Clear preview-related session state."""
+    st.session_state.upload_preview_data = None
+    st.session_state.upload_preview_file_upload_id = None
+    st.session_state.upload_preview_error = None
+
+
+def import_harvest_records(parsed_records: list[dict], file_upload_id: str) -> bool:
+    """
+    Insert parsed records into the harvests table.
+
+    Args:
+        parsed_records: List of parsed records from parse_efish
+        file_upload_id: UUID of the file_uploads record
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Extract only harvest table fields (removes underscore-prefixed fields)
+        harvest_records = get_harvest_records(parsed_records)
+
+        if not harvest_records:
+            st.error("No valid records to import.")
+            return False
+
+        # Insert in batches to avoid timeout
+        batch_size = 100
+        total_inserted = 0
+
+        for i in range(0, len(harvest_records), batch_size):
+            batch = harvest_records[i:i + batch_size]
+            response = supabase.table("harvests").insert(batch).execute()
+
+            if response.data:
+                total_inserted += len(response.data)
+            else:
+                st.error(f"Failed to insert batch {i // batch_size + 1}")
+                return False
+
+        # Update file_uploads with status
+        update_response = supabase.table("file_uploads").update({
+            "row_count": total_inserted,
+            "status": "imported"
+        }).eq("id", file_upload_id).execute()
+
+        return True
+
+    except Exception as e:
+        st.error(f"Import error: {str(e)}")
+        return False
+
+
+def process_upload(file, cooperative_id: str, source_type: str) -> tuple[bool, str | None]:
     """
     Process and upload the file.
 
@@ -96,7 +253,7 @@ def process_upload(file, cooperative_id: str, source_type: str) -> bool:
         source_type: Type of data source
 
     Returns:
-        True if successful, False otherwise
+        Tuple of (success, file_upload_id)
     """
     try:
         # Read file content
@@ -116,7 +273,7 @@ def process_upload(file, cooperative_id: str, source_type: str) -> bool:
 
         if not success:
             st.error(f"Storage upload failed: {error}")
-            return False
+            return False, None
 
         # Log to file_uploads table
         user = get_current_user()
@@ -127,19 +284,21 @@ def process_upload(file, cooperative_id: str, source_type: str) -> bool:
             "filename": original_filename,
             "storage_path": storage_path,
             "row_count": row_count,
+            "status": "uploaded",  # Will be updated to "imported" after processing
         }
 
         response = supabase.table("file_uploads").insert(upload_record).execute()
 
         if not response.data:
             st.error("Failed to log upload to database.")
-            return False
+            return False, None
 
-        return True
+        file_upload_id = response.data[0]["id"]
+        return True, file_upload_id
 
     except Exception as e:
         st.error(f"Upload error: {str(e)}")
-        return False
+        return False, None
 
 
 def count_rows(file) -> int:
@@ -187,21 +346,32 @@ def show_recent_uploads():
     df = pd.DataFrame(uploads)
 
     # Format for display
-    display_df = df[["filename", "source_type", "cooperative_name", "row_count", "uploaded_at", "uploaded_by_email"]].copy()
-    display_df["uploaded_at"] = pd.to_datetime(display_df["uploaded_at"]).dt.strftime("%Y-%m-%d %H:%M")
+    display_cols = ["filename", "source_type", "cooperative_name", "row_count", "status", "uploaded_at", "uploaded_by_email"]
+    available_cols = [c for c in display_cols if c in df.columns]
+    display_df = df[available_cols].copy()
+
+    if "uploaded_at" in display_df.columns:
+        display_df["uploaded_at"] = pd.to_datetime(display_df["uploaded_at"]).dt.strftime("%Y-%m-%d %H:%M")
+
+    # Add status column if not present
+    if "status" not in display_df.columns:
+        display_df["status"] = "uploaded"
+
+    column_config = {
+        "filename": st.column_config.TextColumn("Filename"),
+        "source_type": st.column_config.TextColumn("Source"),
+        "cooperative_name": st.column_config.TextColumn("Cooperative"),
+        "row_count": st.column_config.NumberColumn("Rows", format="%d"),
+        "status": st.column_config.TextColumn("Status"),
+        "uploaded_at": st.column_config.TextColumn("Uploaded"),
+        "uploaded_by_email": st.column_config.TextColumn("By"),
+    }
 
     st.dataframe(
         display_df,
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "filename": st.column_config.TextColumn("Filename"),
-            "source_type": st.column_config.TextColumn("Source"),
-            "cooperative_name": st.column_config.TextColumn("Cooperative"),
-            "row_count": st.column_config.NumberColumn("Rows", format="%d"),
-            "uploaded_at": st.column_config.TextColumn("Uploaded"),
-            "uploaded_by_email": st.column_config.TextColumn("By"),
-        },
+        column_config=column_config,
         key="upload_recent_table",
     )
 

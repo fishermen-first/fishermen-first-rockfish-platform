@@ -191,5 +191,6 @@ CREATE TABLE file_uploads (
     filename text NOT NULL,
     storage_path text NOT NULL,
     row_count integer,
+    status text NOT NULL DEFAULT 'uploaded' CHECK (status IN ('uploaded', 'imported', 'error')),
     uploaded_at timestamp with time zone DEFAULT now()
 );
