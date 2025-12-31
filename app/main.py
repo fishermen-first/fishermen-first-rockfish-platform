@@ -131,7 +131,7 @@ def show_admin_page():
     """Display admin settings with tabs for managing different entities."""
     st.title("Admin Settings")
 
-    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Processors", "Species", "Seasons"])
+    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Member Assignments", "Processors", "Species", "Seasons"])
 
     with tabs[0]:
         from app.pages.admin import manage_coops
@@ -146,12 +146,17 @@ def show_admin_page():
         manage_vessels.show()
 
     with tabs[3]:
-        st.info("🚧 Manage Processors - Coming soon")
+        from app.pages.admin import manage_member_coops
+        manage_member_coops.show()
 
     with tabs[4]:
-        st.info("🚧 Manage Species - Coming soon")
+        from app.pages.admin import manage_processors
+        manage_processors.show()
 
     with tabs[5]:
+        st.info("🚧 Manage Species - Coming soon")
+
+    with tabs[6]:
         st.info("🚧 Manage Seasons - Coming soon")
 
 
