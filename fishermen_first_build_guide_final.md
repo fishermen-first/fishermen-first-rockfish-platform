@@ -178,7 +178,7 @@ The script should:
 - [x] Run: `python scripts/insert_test_data.py`
 - [x] Verify data appears in Supabase Table Editor
 
-### Prompt 10: View Rosters Page
+### Prompt 10: View Rosters Page ✅
 ```
 Create app/pages/rosters.py that shows three tabs:
 - Cooperatives: table listing all cooperatives
@@ -189,7 +189,7 @@ Use the historical tracking tables to show current assignments (where effective_
 Include search/filter capability.
 ```
 
-### Prompt 11: Manage Cooperatives (Admin)
+### Prompt 11: Manage Cooperatives (Admin) ✅
 ```
 Create app/pages/admin/manage_coops.py following templates/crud_page_template.md
 

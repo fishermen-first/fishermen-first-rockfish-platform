@@ -122,9 +122,35 @@ def show_current_page():
     elif page == "psc":
         show_placeholder("PSC Tracking", "Monitor prohibited species catch limits.")
     elif page == "admin":
-        show_placeholder("Admin Settings", "Manage users, cooperatives, and system settings.")
+        show_admin_page()
     else:
         st.error("Page not found.")
+
+
+def show_admin_page():
+    """Display admin settings with tabs for managing different entities."""
+    st.title("Admin Settings")
+
+    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Processors", "Species", "Seasons"])
+
+    with tabs[0]:
+        from app.pages.admin import manage_coops
+        manage_coops.show()
+
+    with tabs[1]:
+        st.info("🚧 Manage Members - Coming soon")
+
+    with tabs[2]:
+        st.info("🚧 Manage Vessels - Coming soon")
+
+    with tabs[3]:
+        st.info("🚧 Manage Processors - Coming soon")
+
+    with tabs[4]:
+        st.info("🚧 Manage Species - Coming soon")
+
+    with tabs[5]:
+        st.info("🚧 Manage Seasons - Coming soon")
 
 
 def show_placeholder(title: str, description: str):
