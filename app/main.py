@@ -111,7 +111,8 @@ def show_current_page():
     if page == "dashboard":
         show_placeholder("Dashboard", "Main dashboard with key metrics and summaries.")
     elif page == "rosters":
-        show_placeholder("Rosters", "View cooperatives, members, and vessels.")
+        from app.pages import rosters
+        rosters.show()
     elif page == "upload":
         show_placeholder("File Uploads", "Upload eFish, eLandings, and fish ticket files.")
     elif page == "quotas":
