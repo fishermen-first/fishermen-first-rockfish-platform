@@ -114,7 +114,8 @@ def show_current_page():
         from app.pages import rosters
         rosters.show()
     elif page == "upload":
-        show_placeholder("File Uploads", "Upload eFish, eLandings, and fish ticket files.")
+        from app.pages import upload
+        upload.show()
     elif page == "quotas":
         show_placeholder("Quota Management", "View and manage quota allocations and transfers.")
     elif page == "harvests":
