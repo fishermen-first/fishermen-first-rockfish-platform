@@ -12,6 +12,8 @@ def init_session_state():
         st.session_state.user_role = None
     if "access_token" not in st.session_state:
         st.session_state.access_token = None
+    if "refresh_token" not in st.session_state:
+        st.session_state.refresh_token = None
 
 
 def login(email: str, password: str) -> tuple[bool, str]:
@@ -31,6 +33,7 @@ def login(email: str, password: str) -> tuple[bool, str]:
             st.session_state.authenticated = True
             st.session_state.user = response.user
             st.session_state.access_token = response.session.access_token
+            st.session_state.refresh_token = response.session.refresh_token
 
             # Fetch user role from users table
             role = fetch_user_role(response.user.id)
@@ -58,6 +61,58 @@ def logout():
     st.session_state.user = None
     st.session_state.user_role = None
     st.session_state.access_token = None
+    st.session_state.refresh_token = None
+
+
+def refresh_session() -> bool:
+    """
+    Attempt to refresh the Supabase session using the refresh token.
+
+    Returns:
+        bool: True if refresh succeeded, False otherwise
+    """
+    try:
+        refresh_token = st.session_state.get("refresh_token")
+        if not refresh_token:
+            return False
+
+        response = supabase.auth.refresh_session(refresh_token)
+
+        if response.user and response.session:
+            st.session_state.user = response.user
+            st.session_state.access_token = response.session.access_token
+            st.session_state.refresh_token = response.session.refresh_token
+            return True
+        return False
+    except Exception:
+        return False
+
+
+def check_and_refresh_session() -> bool:
+    """
+    Check if session is valid and refresh if needed.
+
+    Returns:
+        bool: True if session is valid (or was refreshed), False if expired
+    """
+    if not st.session_state.get("authenticated"):
+        return False
+
+    # Try to get current session from Supabase
+    try:
+        session = supabase.auth.get_session()
+        if session:
+            return True
+    except Exception:
+        pass
+
+    # Session invalid, try to refresh
+    if refresh_session():
+        return True
+
+    # Refresh failed, force logout
+    logout()
+    return False
 
 
 def is_authenticated() -> bool:
@@ -100,7 +155,7 @@ def get_current_role() -> str | None:
 def require_auth():
     """
     Decorator-style check that redirects to login if not authenticated.
-    Call at the top of protected pages.
+    Call at the top of protected pages. Also checks for expired JWT and refreshes.
 
     Returns:
         bool: True if authenticated, False otherwise
@@ -108,6 +163,12 @@ def require_auth():
     if not is_authenticated():
         st.warning("Please log in to access this page.")
         return False
+
+    # Check if session is still valid, refresh if needed
+    if not check_and_refresh_session():
+        st.warning("Your session has expired. Please log in again.")
+        return False
+
     return True
 
 
