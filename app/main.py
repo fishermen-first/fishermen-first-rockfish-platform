@@ -159,10 +159,12 @@ def show_admin_page():
         manage_processors.show()
 
     with tabs[6]:
-        st.info("🚧 Manage Species - Coming soon")
+        from app.pages.admin import manage_species
+        manage_species.show()
 
     with tabs[7]:
-        st.info("🚧 Manage Seasons - Coming soon")
+        from app.pages.admin import manage_seasons
+        manage_seasons.show()
 
 
 def show_placeholder(title: str, description: str):
