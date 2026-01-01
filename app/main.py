@@ -119,7 +119,8 @@ def show_current_page():
     elif page == "quotas":
         show_placeholder("Quota Management", "View and manage quota allocations and transfers.")
     elif page == "harvests":
-        show_placeholder("Harvest Data", "View harvest records and reports.")
+        from app.pages import harvests
+        harvests.show()
     elif page == "psc":
         show_placeholder("PSC Tracking", "Monitor prohibited species catch limits.")
     elif page == "admin":
