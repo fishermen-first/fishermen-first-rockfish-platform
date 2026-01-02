@@ -117,7 +117,8 @@ def show_current_page():
         from app.pages import upload
         upload.show()
     elif page == "quotas":
-        show_placeholder("Quota Management", "View and manage quota allocations and transfers.")
+        from app.pages import quota_dashboard
+        quota_dashboard.show()
     elif page == "harvests":
         from app.pages import harvests
         harvests.show()
@@ -133,7 +134,7 @@ def show_admin_page():
     """Display admin settings with tabs for managing different entities."""
     st.title("Admin Settings")
 
-    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Member Assignments", "Vessel Assignments", "Processors", "Species", "Seasons"])
+    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Member Assignments", "Vessel Assignments", "Processors", "Species", "Seasons", "Quota Allocations"])
 
     with tabs[0]:
         from app.pages.admin import manage_coops
@@ -166,6 +167,10 @@ def show_admin_page():
     with tabs[7]:
         from app.pages.admin import manage_seasons
         manage_seasons.show()
+
+    with tabs[8]:
+        from app.pages.admin import manage_quotas
+        manage_quotas.show()
 
 
 def show_placeholder(title: str, description: str):

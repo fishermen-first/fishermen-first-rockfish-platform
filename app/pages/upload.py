@@ -5,7 +5,7 @@ File Upload page - Upload data files to Supabase Storage.
 import streamlit as st
 import pandas as pd
 from app.config import supabase
-from app.auth import require_auth, get_current_user
+from app.auth import require_auth, get_current_user, handle_jwt_error
 from app.utils.storage import upload_file
 from app.utils.parsers import parse_efish, get_harvest_records, ParseError, ValidationError
 
@@ -176,7 +176,9 @@ def fetch_cooperatives() -> list[dict]:
     try:
         response = supabase.table("cooperatives").select("id, cooperative_name").order("cooperative_name").execute()
         return response.data or []
-    except Exception:
+    except Exception as e:
+        if handle_jwt_error(e):
+            st.rerun()
         return []
 
 
@@ -198,5 +200,7 @@ def fetch_recent_uploads(limit: int = 20) -> list[dict]:
             upload["status"] = upload.get("status") or "uploaded"
 
         return uploads
-    except Exception:
+    except Exception as e:
+        if handle_jwt_error(e):
+            st.rerun()
         return []

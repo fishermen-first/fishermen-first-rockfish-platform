@@ -201,3 +201,25 @@ def require_role(required_role: str) -> bool:
 def is_admin() -> bool:
     """Check if current user is an admin."""
     return get_current_role() == "admin"
+
+
+def handle_jwt_error(error: Exception) -> bool:
+    """
+    Check if an error is a JWT expiration error and handle it.
+
+    Args:
+        error: The exception to check
+
+    Returns:
+        True if it was a JWT error and session was refreshed, False otherwise
+    """
+    error_str = str(error).lower()
+    if "jwt" in error_str and "expired" in error_str:
+        # Try to refresh the session
+        if refresh_session():
+            return True
+        # Refresh failed, force logout
+        logout()
+        st.warning("Your session has expired. Please log in again.")
+        st.rerun()
+    return False

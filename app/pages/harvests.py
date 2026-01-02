@@ -4,9 +4,9 @@ Harvests page - View harvest records with filters.
 
 import streamlit as st
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date
 from app.config import supabase
-from app.auth import require_auth
+from app.auth import require_auth, handle_jwt_error
 
 
 def show():
@@ -40,9 +40,9 @@ def show():
 
 def show_filters():
     """Display filter controls."""
-    # Initialize filter state
+    # Initialize filter state - default to current season start
     if "harvests_date_from" not in st.session_state:
-        st.session_state.harvests_date_from = date.today() - timedelta(days=30)
+        st.session_state.harvests_date_from = date(2025, 7, 1)  # Season start
     if "harvests_date_to" not in st.session_state:
         st.session_state.harvests_date_to = date.today()
 
@@ -191,6 +191,9 @@ def fetch_harvests() -> pd.DataFrame:
         return harvests
 
     except Exception as e:
+        # Check for JWT expiration and handle it
+        if handle_jwt_error(e):
+            st.rerun()  # Retry after session refresh
         st.error(f"Error fetching harvests: {e}")
         return pd.DataFrame()
 
@@ -200,7 +203,9 @@ def fetch_vessels() -> list[dict]:
     try:
         response = supabase.table("vessels").select("id, vessel_name").order("vessel_name").execute()
         return response.data or []
-    except Exception:
+    except Exception as e:
+        if handle_jwt_error(e):
+            st.rerun()
         return []
 
 
@@ -209,5 +214,7 @@ def fetch_species() -> list[dict]:
     try:
         response = supabase.table("species").select("id, species_name").order("species_name").execute()
         return response.data or []
-    except Exception:
+    except Exception as e:
+        if handle_jwt_error(e):
+            st.rerun()
         return []
