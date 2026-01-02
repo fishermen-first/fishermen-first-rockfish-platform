@@ -81,6 +81,7 @@ def show_sidebar():
             "rosters": "👥 Rosters",
             "upload": "📤 Uploads",
             "quotas": "📋 Quotas",
+            "transfers": "🔄 Transfers",
             "harvests": "🎣 Harvests",
             "psc": "⚠️ PSC Tracking",
         }
@@ -119,6 +120,9 @@ def show_current_page():
     elif page == "quotas":
         from app.pages import quota_dashboard
         quota_dashboard.show()
+    elif page == "transfers":
+        from app.pages import quota_transfers
+        quota_transfers.show()
     elif page == "harvests":
         from app.pages import harvests
         harvests.show()

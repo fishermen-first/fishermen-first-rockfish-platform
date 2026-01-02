@@ -133,6 +133,7 @@ CREATE TABLE quota_transfers (
     species_id uuid NOT NULL REFERENCES species(id),
     amount numeric NOT NULL,
     transfer_date date NOT NULL,
+    notes text,
     created_at timestamp with time zone DEFAULT now()
 );
 
