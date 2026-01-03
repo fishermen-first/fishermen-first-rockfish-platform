@@ -89,15 +89,27 @@ def fetch_record(record_id: str) -> dict | None:
 
 def display_data_table(data: pd.DataFrame):
     """Display data table with row selection."""
-    display_columns = ["species_code", "species_name"]
+    # Prepare display data
+    display_data = data.copy()
+
+    # Add PSC indicator column
+    if "is_psc" in display_data.columns:
+        display_data["psc_status"] = display_data["is_psc"].apply(
+            lambda x: "⚠️ PSC" if x else ""
+        )
+    else:
+        display_data["psc_status"] = ""
+
+    display_columns = ["species_code", "species_name", "psc_status"]
 
     column_config = {
         "species_code": st.column_config.TextColumn("Code"),
         "species_name": st.column_config.TextColumn("Name"),
+        "psc_status": st.column_config.TextColumn("PSC"),
     }
 
     selection = st.dataframe(
-        data[display_columns],
+        display_data[display_columns],
         use_container_width=True,
         hide_index=True,
         column_config=column_config,
@@ -111,6 +123,11 @@ def display_data_table(data: pd.DataFrame):
         st.session_state.species_selected_ids = data.iloc[selected_indices]["id"].tolist()
     else:
         st.session_state.species_selected_ids = []
+
+    # Show PSC legend
+    psc_count = data["is_psc"].sum() if "is_psc" in data.columns else 0
+    if psc_count > 0:
+        st.caption(f"⚠️ PSC = Prohibited Species Catch ({psc_count} species)")
 
 
 def show_action_buttons():
@@ -146,19 +163,32 @@ def show_form():
 
     with st.expander(title, expanded=True):
         with st.form("species_form"):
-            species_code = st.text_input(
-                "Species Code *",
-                value=existing.get("species_code", ""),
-                placeholder="e.g., 141",
-                key="species_form_code",
-            )
+            col1, col2 = st.columns([2, 1])
 
-            species_name = st.text_input(
-                "Species Name *",
-                value=existing.get("species_name", ""),
-                placeholder="e.g., Pacific Ocean Perch",
-                key="species_form_name",
-            )
+            with col1:
+                species_code = st.text_input(
+                    "Species Code *",
+                    value=existing.get("species_code", ""),
+                    placeholder="e.g., 141",
+                    key="species_form_code",
+                )
+
+                species_name = st.text_input(
+                    "Species Name *",
+                    value=existing.get("species_name", ""),
+                    placeholder="e.g., Pacific Ocean Perch",
+                    key="species_form_name",
+                )
+
+            with col2:
+                st.write("")  # Spacer
+                st.write("")  # Spacer
+                is_psc = st.checkbox(
+                    "⚠️ Prohibited Species (PSC)",
+                    value=existing.get("is_psc", False),
+                    key="species_form_is_psc",
+                    help="Check if this is a prohibited species that must be tracked separately",
+                )
 
             col1, col2 = st.columns(2)
             with col1:
@@ -185,6 +215,7 @@ def show_form():
                 record_data = {
                     "species_code": species_code.strip(),
                     "species_name": species_name.strip(),
+                    "is_psc": is_psc,
                 }
 
                 if is_edit:

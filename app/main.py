@@ -138,7 +138,7 @@ def show_admin_page():
     """Display admin settings with tabs for managing different entities."""
     st.title("Admin Settings")
 
-    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Member Assignments", "Vessel Assignments", "Processors", "Species", "Seasons", "Quota Allocations"])
+    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Member Assignments", "Vessel Assignments", "Processors", "Species", "Seasons", "Quota Allocations", "PSC Limits"])
 
     with tabs[0]:
         from app.pages.admin import manage_coops
@@ -175,6 +175,10 @@ def show_admin_page():
     with tabs[8]:
         from app.pages.admin import manage_quotas
         manage_quotas.show()
+
+    with tabs[9]:
+        from app.pages.admin import manage_psc_limits
+        manage_psc_limits.show()
 
 
 def show_placeholder(title: str, description: str):
