@@ -103,10 +103,17 @@ def fetch_record(record_id: str) -> dict | None:
 
 def display_data_table(data: pd.DataFrame):
     """Display data table with row selection."""
-    display_columns = ["cooperative_name", "contact_info"]
+    display_columns = ["cooperative_name", "coop_code", "coop_id_number", "contact_info"]
+
+    # Ensure columns exist
+    for col in display_columns:
+        if col not in data.columns:
+            data[col] = ""
 
     column_config = {
         "cooperative_name": st.column_config.TextColumn("Cooperative Name"),
+        "coop_code": st.column_config.TextColumn("Coop Code"),
+        "coop_id_number": st.column_config.NumberColumn("Coop ID Number", format="%d"),
         "contact_info": st.column_config.TextColumn("Contact Info"),
     }
 
@@ -164,12 +171,31 @@ def show_form(data: pd.DataFrame):
 
     with st.expander(title, expanded=True):
         with st.form(key="coops_form"):
-            cooperative_name = st.text_input(
-                "Cooperative Name *",
-                value=existing.get("cooperative_name", ""),
-                placeholder="Enter cooperative name",
-                key="coops_name_input",
-            )
+            col1, col2 = st.columns(2)
+
+            with col1:
+                cooperative_name = st.text_input(
+                    "Cooperative Name *",
+                    value=existing.get("cooperative_name", ""),
+                    placeholder="Enter cooperative name",
+                    key="coops_name_input",
+                )
+
+                coop_code = st.text_input(
+                    "Coop Code",
+                    value=existing.get("coop_code", "") or "",
+                    placeholder="e.g., SOK, OBSI",
+                    key="coops_code_input",
+                )
+
+            with col2:
+                coop_id_number = st.number_input(
+                    "Coop ID Number",
+                    min_value=0,
+                    value=existing.get("coop_id_number") or 0,
+                    step=1,
+                    key="coops_id_number_input",
+                )
 
             contact_info = st.text_area(
                 "Contact Info",
@@ -200,6 +226,8 @@ def show_form(data: pd.DataFrame):
 
                 record_data = {
                     "cooperative_name": cooperative_name.strip(),
+                    "coop_code": coop_code.strip() if coop_code else None,
+                    "coop_id_number": coop_id_number if coop_id_number > 0 else None,
                     "contact_info": contact_info.strip() if contact_info else None,
                 }
 
