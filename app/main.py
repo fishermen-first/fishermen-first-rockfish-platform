@@ -1,3 +1,5 @@
+"""Main entry point for Fishermen First Analytics."""
+
 import sys
 from pathlib import Path
 
@@ -13,18 +15,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-from app.auth import init_session_state, is_authenticated, login, logout, get_current_user, get_current_role
+from app.auth import init_session_state, is_authenticated, login, logout, get_current_user
 
 
 def main():
     init_session_state()
 
-    # Show login form if not authenticated
     if not is_authenticated():
         show_login()
         return
 
-    # User is authenticated - show main app
     show_sidebar()
     show_current_page()
 
@@ -56,15 +56,12 @@ def show_login():
 def show_sidebar():
     """Display sidebar with navigation and user info."""
     user = get_current_user()
-    role = get_current_role()
 
     with st.sidebar:
-        st.title("🐟 Fishermen First")
+        st.title("Fishermen First")
         st.divider()
 
-        # User info
         st.caption(f"Logged in as: **{user.email}**")
-        st.caption(f"Role: **{role}**")
 
         if st.button("Log Out", use_container_width=True):
             logout()
@@ -72,34 +69,23 @@ def show_sidebar():
 
         st.divider()
 
-        # Navigation
-        st.subheader("Navigation")
-
-        # Pages available to all authenticated users
+        # Navigation - Dashboard, Allocations, Rosters, Upload
         nav_options = {
-            "dashboard": "📊 Dashboard",
-            "rosters": "👥 Rosters",
-            "upload": "📤 Uploads",
-            "quotas": "📋 Quotas",
-            "transfers": "🔄 Transfers",
-            "harvests": "🎣 Harvests",
-            "psc": "⚠️ PSC Tracking",
+            "dashboard": "Dashboard",
+            "allocations": "Allocations",
+            "rosters": "Rosters",
+            "upload": "Upload",
         }
 
-        # Admin-only pages
-        if role == "admin":
-            nav_options["admin"] = "⚙️ Admin Settings"
-
-        # Initialize current page
         if "current_page" not in st.session_state:
             st.session_state.current_page = "dashboard"
 
-        # Render nav buttons
         for page_key, page_label in nav_options.items():
+            is_current = st.session_state.current_page == page_key
             if st.button(
                 page_label,
                 use_container_width=True,
-                type="primary" if st.session_state.current_page == page_key else "secondary"
+                type="primary" if is_current else "secondary"
             ):
                 st.session_state.current_page = page_key
                 st.rerun()
@@ -110,86 +96,19 @@ def show_current_page():
     page = st.session_state.get("current_page", "dashboard")
 
     if page == "dashboard":
-        show_placeholder("Dashboard", "Main dashboard with key metrics and summaries.")
+        from app.pages import dashboard
+        dashboard.show()
+    elif page == "allocations":
+        from app.pages import allocations
+        allocations.show()
     elif page == "rosters":
         from app.pages import rosters
         rosters.show()
     elif page == "upload":
         from app.pages import upload
         upload.show()
-    elif page == "quotas":
-        from app.pages import quota_dashboard
-        quota_dashboard.show()
-    elif page == "transfers":
-        from app.pages import quota_transfers
-        quota_transfers.show()
-    elif page == "harvests":
-        from app.pages import harvests
-        harvests.show()
-    elif page == "psc":
-        show_placeholder("PSC Tracking", "Monitor prohibited species catch limits.")
-    elif page == "admin":
-        show_admin_page()
     else:
         st.error("Page not found.")
-
-
-def show_admin_page():
-    """Display admin settings with tabs for managing different entities."""
-    st.title("Admin Settings")
-
-    tabs = st.tabs(["Cooperatives", "Members", "Vessels", "Member Assignments", "Vessel Assignments", "Processors", "Species", "Seasons", "Quota Allocations", "PSC Limits", "LLP Permits"])
-
-    with tabs[0]:
-        from app.pages.admin import manage_coops
-        manage_coops.show()
-
-    with tabs[1]:
-        from app.pages.admin import manage_members
-        manage_members.show()
-
-    with tabs[2]:
-        from app.pages.admin import manage_vessels
-        manage_vessels.show()
-
-    with tabs[3]:
-        from app.pages.admin import manage_member_coops
-        manage_member_coops.show()
-
-    with tabs[4]:
-        from app.pages.admin import manage_vessel_coops
-        manage_vessel_coops.show()
-
-    with tabs[5]:
-        from app.pages.admin import manage_processors
-        manage_processors.show()
-
-    with tabs[6]:
-        from app.pages.admin import manage_species
-        manage_species.show()
-
-    with tabs[7]:
-        from app.pages.admin import manage_seasons
-        manage_seasons.show()
-
-    with tabs[8]:
-        from app.pages.admin import manage_quotas
-        manage_quotas.show()
-
-    with tabs[9]:
-        from app.pages.admin import manage_psc_limits
-        manage_psc_limits.show()
-
-    with tabs[10]:
-        from app.pages.admin import manage_llp_permits
-        manage_llp_permits.show()
-
-
-def show_placeholder(title: str, description: str):
-    """Show a placeholder page until the real page is implemented."""
-    st.title(title)
-    st.info(f"🚧 {description}")
-    st.caption("This page is under construction.")
 
 
 if __name__ == "__main__":
