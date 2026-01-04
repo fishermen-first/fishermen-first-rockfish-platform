@@ -7,18 +7,24 @@ from app.config import supabase
 # Species code to name mapping
 SPECIES_NAMES = {141: "POP", 136: "NR", 172: "Dusky"}
 
+# PSC species code to name mapping
+PSC_SPECIES_NAMES = {110: "Pacific Cod", 143: "Thornyhead", 200: "Halibut", 710: "Sablefish"}
+
 
 def show():
     """Display the allocations page with tabs."""
     st.title("Allocations")
 
-    tab1, tab2 = st.tabs(["Total Allocation", "Vessel Allocations"])
+    tab1, tab2, tab3 = st.tabs(["Total Allocation", "Vessel Allocations", "PSC Allocations"])
 
     with tab1:
         show_total_allocation()
 
     with tab2:
         show_vessel_allocations()
+
+    with tab3:
+        show_psc_allocations()
 
 
 def show_total_allocation():
@@ -128,3 +134,30 @@ def show_vessel_allocations():
 
     except Exception as e:
         st.error(f"Error loading vessel allocations: {e}")
+
+
+def show_psc_allocations():
+    """Tab 3: PSC Allocations."""
+    st.subheader("PSC Allocations (2026)")
+
+    try:
+        response = supabase.table("psc_allocations").select(
+            "species_code, cv_sector_lbs"
+        ).eq("year", 2026).order("species_code").execute()
+
+        if response.data:
+            df = pd.DataFrame(response.data)
+            df["Species"] = df["species_code"].map(PSC_SPECIES_NAMES)
+            df = df.rename(columns={
+                "cv_sector_lbs": "CV Sector (lbs)"
+            })
+            df = df[["Species", "CV Sector (lbs)"]]
+
+            df_styled = df.style.format({
+                'CV Sector (lbs)': '{:,.0f}'
+            })
+            st.dataframe(df_styled, use_container_width=True, hide_index=True)
+        else:
+            st.info("No PSC allocation data for 2026.")
+    except Exception as e:
+        st.error(f"Error loading PSC allocations: {e}")

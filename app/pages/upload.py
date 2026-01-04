@@ -1,72 +1,45 @@
-"""Upload page - simple file upload for eFish data."""
+"""Upload page - file uploads for eFish data."""
 
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-from app.config import supabase
 
 
 def show():
-    """Display the upload page."""
-    st.title("Upload eFish Data")
+    """Display the upload page with two upload sections."""
+    st.header("Upload")
 
-    # File uploader
-    uploaded_file = st.file_uploader(
-        "Choose an eFish CSV file",
-        type=["csv"],
-        help="Upload a CSV file exported from eFish"
-    )
+    # Section 1: Account Balance
+    st.subheader("Account Balance")
+    st.caption("Upload coopaccountbalance.csv - Summary snapshot by species")
 
-    if uploaded_file is not None:
+    balance_file = st.file_uploader("Choose CSV file", type=['csv'], key="balance_upload")
+
+    if balance_file:
         try:
-            # Read the CSV
-            df = pd.read_csv(uploaded_file)
+            df = pd.read_csv(balance_file)
+            st.write(f"Preview: {len(df)} rows")
+            st.dataframe(df, use_container_width=True)
 
-            st.subheader("Preview")
-            st.dataframe(df.head(10), use_container_width=True, hide_index=True)
-            st.caption(f"{len(df)} rows, {len(df.columns)} columns")
-
-            # Show column names
-            with st.expander("Column names"):
-                st.write(list(df.columns))
-
-            # Upload button
-            if st.button("Upload to Database", type="primary"):
-                with st.spinner("Uploading..."):
-                    success, message = save_upload(uploaded_file, df)
-
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
-
+            if st.button("Import Balance Data", key="import_balance"):
+                st.info("Import logic coming soon")
         except Exception as e:
             st.error(f"Error reading file: {e}")
 
+    st.divider()
 
-def save_upload(uploaded_file, df: pd.DataFrame) -> tuple[bool, str]:
-    """Save the uploaded file metadata to the database."""
-    try:
-        # Get current user from session
-        user_id = st.session_state.get("user_id")
-        if not user_id:
-            return False, "No user logged in"
+    # Section 2: Catch Detail
+    st.subheader("Catch Detail")
+    st.caption("Upload coopaccountdetail.xlsx - Individual harvest records")
 
-        # Create file upload record
-        record = {
-            "uploaded_by": user_id,
-            "source_type": "eFish",
-            "filename": uploaded_file.name,
-            "row_count": len(df),
-            "uploaded_at": datetime.now().isoformat()
-        }
+    detail_file = st.file_uploader("Choose Excel file", type=['xlsx'], key="detail_upload")
 
-        response = supabase.table("file_uploads").insert(record).execute()
+    if detail_file:
+        try:
+            df = pd.read_excel(detail_file)
+            st.write(f"Preview: {len(df)} rows")
+            st.dataframe(df, use_container_width=True)
 
-        if response.data:
-            return True, f"Uploaded {uploaded_file.name} ({len(df)} rows)"
-        else:
-            return False, "Failed to save upload record"
-
-    except Exception as e:
-        return False, f"Error: {e}"
+            if st.button("Import Catch Detail", key="import_detail"):
+                st.info("Import logic coming soon")
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
