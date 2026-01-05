@@ -96,8 +96,25 @@ def show():
 
 def render_dashboard():
     """Main dashboard layout with filters and KPI cards."""
+    # Custom CSS for KPI cards
+    st.markdown("""
+    <style>
+        [data-testid="stMetric"] {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        [data-testid="stMetric"] label {
+            color: #64748b;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.title("Dashboard")
     st.caption("Quota overview across all co-ops")
+    st.caption(f"Season: 2026 | Last updated: {pd.Timestamp.now().strftime('%B %d, %Y')}")
 
     # Get and process data
     raw_df = get_quota_data()
@@ -109,26 +126,26 @@ def render_dashboard():
     pivot_df = add_risk_flags(pivot_df)
 
     # --- FILTER BAR ---
-    st.markdown("---")
-    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+    with st.expander("Filters", expanded=False):
+        col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
-    with col1:
-        coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
-        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
+        with col1:
+            coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
+            selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
 
-    with col2:
-        selected_species = st.selectbox("Species", ["All", "POP", "NR", "Dusky"], key="filter_species")
+        with col2:
+            selected_species = st.selectbox("Species", ["All", "POP", "NR", "Dusky"], key="filter_species")
 
-    with col3:
-        selected_risk = st.selectbox("Risk Level", ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"], key="filter_risk")
+        with col3:
+            selected_risk = st.selectbox("Risk Level", ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"], key="filter_risk")
 
-    with col4:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Clear Filters"):
-            st.session_state.filter_coop = "All"
-            st.session_state.filter_species = "All"
-            st.session_state.filter_risk = "All"
-            st.rerun()
+        with col4:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Clear Filters"):
+                st.session_state.filter_coop = "All"
+                st.session_state.filter_species = "All"
+                st.session_state.filter_risk = "All"
+                st.rerun()
 
     # Apply filters
     filtered_df = pivot_df.copy()
@@ -153,7 +170,7 @@ def render_dashboard():
                 mask = mask & (filtered_df[col] >= 50)
         filtered_df = filtered_df[mask]
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # --- KPI CARDS ---
     total_vessels = len(filtered_df)
@@ -171,7 +188,15 @@ def render_dashboard():
     with kpi1:
         st.metric("Vessels Tracked", f"{total_vessels}")
     with kpi2:
-        st.metric("Vessels at Risk", f"{vessels_at_risk}")
+        if vessels_at_risk > 0:
+            st.markdown(f"""
+                <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px;">
+                    <p style="color: #64748b; font-size: 14px; margin: 0;">Vessels at Risk</p>
+                    <p style="color: #dc2626; font-size: 32px; font-weight: bold; margin: 0;">{vessels_at_risk}</p>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.metric("Vessels at Risk", f"{vessels_at_risk}")
     with kpi3:
         st.metric("Avg % Remaining", f"{avg_pct:.1f}%")
     with kpi4:
@@ -181,7 +206,7 @@ def render_dashboard():
     with kpi6:
         st.metric("Total Dusky (lbs)", f"{total_dusky:,.0f}")
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # --- VESSELS NEEDING ATTENTION ---
     st.subheader("⚠️ Vessels Needing Attention")
@@ -221,7 +246,7 @@ def render_dashboard():
         if len(filtered_df[filtered_df["vessel_at_risk"] == True]) > 7:
             st.markdown("*View all at-risk vessels in the table below*")
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # --- MAIN DATA TABLE ---
     st.subheader("Quota Remaining by Vessel")
