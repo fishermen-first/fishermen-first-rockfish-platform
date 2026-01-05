@@ -4,161 +4,291 @@ import streamlit as st
 import pandas as pd
 from app.config import supabase
 
-# Species code to name mapping
-SPECIES_NAMES = {141: "POP", 136: "NR", 172: "Dusky"}
+SPECIES_MAP = {141: 'POP', 136: 'NR', 172: 'Dusky'}
 
+
+def get_quota_data():
+    """Fetch quota_remaining joined with coop_members for vessel info"""
+    response = supabase.table("quota_remaining").select("*").eq("year", 2026).execute()
+    if not response.data:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(response.data)
+
+    # Get vessel info
+    members = supabase.table("coop_members").select("llp, vessel_name, coop_code").execute()
+    members_df = pd.DataFrame(members.data)
+
+    # Join
+    df = df.merge(members_df, on="llp", how="left")
+
+    # Map species codes to names
+    df["species"] = df["species_code"].map(SPECIES_MAP)
+
+    # Calculate percent remaining (handle 0 allocation)
+    df["pct_remaining"] = df.apply(
+        lambda row: (row["remaining_lbs"] / row["allocation_lbs"] * 100)
+        if row["allocation_lbs"] > 0 else None,
+        axis=1
+    )
+
+    return df
+
+
+def pivot_quota_data(df):
+    """Pivot to wide format: one row per vessel with columns for each species"""
+    if df.empty:
+        return pd.DataFrame()
+
+    pivot = df.pivot_table(
+        index=["llp", "vessel_name", "coop_code"],
+        columns="species",
+        values=["remaining_lbs", "allocation_lbs", "pct_remaining"],
+        aggfunc="first"
+    ).reset_index()
+
+    # Flatten column names
+    pivot.columns = [f"{col[1]}_{col[0]}" if col[1] else col[0] for col in pivot.columns]
+
+    # Rename for clarity
+    pivot = pivot.rename(columns={
+        "llp_": "llp",
+        "vessel_name_": "vessel_name",
+        "coop_code_": "coop_code"
+    })
+
+    return pivot
+
+
+def get_risk_level(pct):
+    """Return risk level based on percent remaining"""
+    if pct is None or pd.isna(pct):
+        return "na"  # Not applicable - no allocation
+    if pct < 10:
+        return "critical"
+    elif pct < 50:
+        return "warning"
+    return "ok"
+
+
+def add_risk_flags(df):
+    """Add risk flags for each species and overall vessel risk"""
+    for species in ["POP", "NR", "Dusky"]:
+        col = f"{species}_pct_remaining"
+        if col in df.columns:
+            df[f"{species}_risk"] = df[col].apply(get_risk_level)
+
+    # Vessel is at risk if ANY species is critical
+    risk_cols = [f"{s}_risk" for s in ["POP", "NR", "Dusky"] if f"{s}_risk" in df.columns]
+    df["vessel_at_risk"] = df[risk_cols].apply(lambda row: "critical" in row.values, axis=1)
+
+    return df
+
+
+# =============================================================================
+# Display functions
+# =============================================================================
 
 def show():
-    """Display the dashboard with quota remaining."""
+    """Entry point for the dashboard page."""
+    render_dashboard()
+
+
+def render_dashboard():
+    """Main dashboard layout with filters and KPI cards."""
     st.title("Dashboard")
+    st.caption("Quota overview across all co-ops")
 
-    # Co-op filter at top
-    coop_options = ["All", "Silver Bay Seafoods", "NORTH PACIFIC", "OBSI", "STAR OF KODIAK"]
-    selected_coop = st.selectbox("Filter by Co-Op", coop_options)
+    # Get and process data
+    raw_df = get_quota_data()
+    if raw_df.empty:
+        st.warning("No quota data found")
+        return
 
-    # Quota Remaining section
-    show_quota_remaining(selected_coop)
+    pivot_df = pivot_quota_data(raw_df)
+    pivot_df = add_risk_flags(pivot_df)
 
+    # --- FILTER BAR ---
+    st.markdown("---")
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
-def show_quota_remaining(selected_coop: str):
-    """Quota Remaining (What's Available)."""
-    st.subheader("Quota Remaining (What's Available)")
+    with col1:
+        coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
+        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
 
-    try:
-        # Get quota remaining from view
-        response = supabase.table("quota_remaining").select("*").eq("year", 2026).execute()
+    with col2:
+        selected_species = st.selectbox("Species", ["All", "POP", "NR", "Dusky"], key="filter_species")
 
-        if not response.data:
-            st.info("No quota remaining data for 2026.")
-            return
+    with col3:
+        selected_risk = st.selectbox("Risk Level", ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"], key="filter_risk")
 
-        # Get coop_members for vessel names and coop codes
-        members_response = supabase.table("coop_members").select(
-            "llp, vessel_name, coop_code"
-        ).execute()
+    with col4:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Clear Filters"):
+            st.session_state.filter_coop = "All"
+            st.session_state.filter_species = "All"
+            st.session_state.filter_risk = "All"
+            st.rerun()
 
-        members_df = pd.DataFrame(members_response.data) if members_response.data else pd.DataFrame()
+    # Apply filters
+    filtered_df = pivot_df.copy()
 
-        # Get allocations for percentage calculation
-        alloc_response = supabase.table("vessel_allocations").select(
-            "llp, species_code, allocation_lbs"
-        ).eq("year", 2026).execute()
+    if selected_coop != "All":
+        filtered_df = filtered_df[filtered_df["coop_code"] == selected_coop]
 
-        alloc_df = pd.DataFrame(alloc_response.data) if alloc_response.data else pd.DataFrame()
-
-        # Pivot remaining to wide format
-        remaining_df = pd.DataFrame(response.data)
-        remaining_df["species_name"] = remaining_df["species_code"].map(SPECIES_NAMES)
-
-        pivot_df = remaining_df.pivot_table(
-            index="llp",
-            columns="species_name",
-            values="remaining_lbs",
-            aggfunc="sum",
-            fill_value=0
-        ).reset_index()
-
-        # Ensure all species columns exist
+    if selected_risk == "<10% Remaining":
+        filtered_df = filtered_df[filtered_df["vessel_at_risk"] == True]
+    elif selected_risk == "10-50% Remaining":
+        mask = False
         for species in ["POP", "NR", "Dusky"]:
-            if species not in pivot_df.columns:
-                pivot_df[species] = 0
+            col = f"{species}_pct_remaining"
+            if col in filtered_df.columns:
+                mask = mask | ((filtered_df[col] >= 10) & (filtered_df[col] < 50))
+        filtered_df = filtered_df[mask]
+    elif selected_risk == ">50% Remaining":
+        mask = True
+        for species in ["POP", "NR", "Dusky"]:
+            col = f"{species}_pct_remaining"
+            if col in filtered_df.columns:
+                mask = mask & (filtered_df[col] >= 50)
+        filtered_df = filtered_df[mask]
 
-        # Also pivot allocations for percentage calculation
-        if not alloc_df.empty:
-            alloc_df["species_name"] = alloc_df["species_code"].map(SPECIES_NAMES)
-            alloc_pivot = alloc_df.pivot_table(
-                index="llp",
-                columns="species_name",
-                values="allocation_lbs",
-                aggfunc="sum",
-                fill_value=0
-            ).reset_index()
+    st.markdown("---")
 
-            # Merge to get allocation amounts
+    # --- KPI CARDS ---
+    total_vessels = len(filtered_df)
+    vessels_at_risk = filtered_df["vessel_at_risk"].sum()
+
+    avg_pct_cols = [f"{s}_pct_remaining" for s in ["POP", "NR", "Dusky"] if f"{s}_pct_remaining" in filtered_df.columns]
+    avg_pct = filtered_df[avg_pct_cols].mean().mean() if avg_pct_cols else 0
+
+    total_pop = filtered_df["POP_remaining_lbs"].sum() if "POP_remaining_lbs" in filtered_df.columns else 0
+    total_nr = filtered_df["NR_remaining_lbs"].sum() if "NR_remaining_lbs" in filtered_df.columns else 0
+    total_dusky = filtered_df["Dusky_remaining_lbs"].sum() if "Dusky_remaining_lbs" in filtered_df.columns else 0
+
+    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
+
+    with kpi1:
+        st.metric("Vessels Tracked", f"{total_vessels}")
+    with kpi2:
+        st.metric("Vessels at Risk", f"{vessels_at_risk}")
+    with kpi3:
+        st.metric("Avg % Remaining", f"{avg_pct:.1f}%")
+    with kpi4:
+        st.metric("Total POP (lbs)", f"{total_pop:,.0f}")
+    with kpi5:
+        st.metric("Total NR (lbs)", f"{total_nr:,.0f}")
+    with kpi6:
+        st.metric("Total Dusky (lbs)", f"{total_dusky:,.0f}")
+
+    st.markdown("---")
+
+    # --- VESSELS NEEDING ATTENTION ---
+    st.subheader("⚠️ Vessels Needing Attention")
+
+    # Get vessels at risk (any species <10%)
+    at_risk_df = filtered_df[filtered_df["vessel_at_risk"] == True].copy()
+
+    if at_risk_df.empty:
+        st.success("No vessels currently at critical risk levels")
+    else:
+        # Sort by lowest percent remaining across any species
+        at_risk_df["min_pct"] = at_risk_df[[f"{s}_pct_remaining" for s in ["POP", "NR", "Dusky"] if f"{s}_pct_remaining" in at_risk_df.columns]].min(axis=1)
+        at_risk_df = at_risk_df.sort_values("min_pct").head(7)
+
+        # Display as simple rows with colored dots
+        for _, row in at_risk_df.iterrows():
+            vessel_name = row.get("vessel_name", "Unknown")
+            llp = row.get("llp", "")
+
+            # Build status dots
+            dots = []
             for species in ["POP", "NR", "Dusky"]:
-                if species in alloc_pivot.columns:
-                    pivot_df = pivot_df.merge(
-                        alloc_pivot[["llp", species]].rename(columns={species: f"{species}_alloc"}),
-                        on="llp",
-                        how="left"
-                    )
-                else:
-                    pivot_df[f"{species}_alloc"] = 0
+                pct_col = f"{species}_pct_remaining"
+                if pct_col in row and pd.notna(row[pct_col]):
+                    pct = row[pct_col]
+                    if pct < 10:
+                        color = "🔴"
+                    elif pct < 50:
+                        color = "🟡"
+                    else:
+                        color = "🟢"
+                    dots.append(f"{color} {species}: {pct:.1f}%")
 
-        # Join with coop_members
-        if not members_df.empty:
-            pivot_df = pivot_df.merge(members_df, on="llp", how="left")
-        else:
-            pivot_df["vessel_name"] = None
-            pivot_df["coop_code"] = None
+            dot_str = " &nbsp;&nbsp; ".join(dots)
+            st.markdown(f"**{vessel_name}** (LLP: {llp}) &nbsp;&nbsp; {dot_str}", unsafe_allow_html=True)
 
-        # Filter by coop if selected
-        if selected_coop != "All":
-            pivot_df = pivot_df[pivot_df["coop_code"] == selected_coop]
+        if len(filtered_df[filtered_df["vessel_at_risk"] == True]) > 7:
+            st.markdown("*View all at-risk vessels in the table below*")
 
-        # Rename remaining columns
-        pivot_df = pivot_df.rename(columns={
-            "POP": "POP Remaining",
-            "NR": "NR Remaining",
-            "Dusky": "Dusky Remaining",
-            "coop_code": "Co-Op",
-            "llp": "LLP",
-            "vessel_name": "Vessel"
-        })
+    st.markdown("---")
 
-        pivot_df = pivot_df.sort_values(["Co-Op", "LLP"])
+    # --- MAIN DATA TABLE ---
+    st.subheader("Quota Remaining by Vessel")
 
-        # Select display columns
-        display_cols = ["Co-Op", "LLP", "Vessel", "POP Remaining", "NR Remaining", "Dusky Remaining"]
-        display_df = pivot_df[display_cols].copy()
+    # Prepare display dataframe
+    display_df = filtered_df.copy()
 
-        # Calculate percentages for color coding
-        def get_color(remaining, alloc):
-            if alloc == 0:
-                return ""
-            pct = remaining / alloc
-            if pct > 0.5:
-                return "background-color: #90EE90; color: black"  # Green
-            elif pct >= 0.1:
-                return "background-color: #FFFF99; color: black"  # Yellow
-            else:
-                return "background-color: #FFB6C1; color: black"  # Red
+    # Select and rename columns for display
+    display_cols = {
+        "coop_code": "Co-Op",
+        "vessel_name": "Vessel",
+        "llp": "LLP"
+    }
 
-        # Apply styling
-        def style_remaining(row):
-            styles = [""] * len(row)
-            for i, col in enumerate(display_cols):
-                if "Remaining" in col:
-                    species = col.replace(" Remaining", "")
-                    alloc_col = f"{species}_alloc"
-                    if alloc_col in pivot_df.columns:
-                        llp_mask = pivot_df["LLP"] == row["LLP"]
-                        if llp_mask.any():
-                            alloc_val = pivot_df.loc[llp_mask, alloc_col].values[0]
-                            styles[i] = get_color(row[col], alloc_val)
-            return styles
+    for species in ["POP", "NR", "Dusky"]:
+        lbs_col = f"{species}_remaining_lbs"
+        pct_col = f"{species}_pct_remaining"
+        if lbs_col in display_df.columns:
+            display_cols[lbs_col] = f"{species} (lbs)"
+        if pct_col in display_df.columns:
+            display_cols[pct_col] = f"{species} %"
 
-        # Format numbers first, then apply color styling
-        styled_df = display_df.style.format({
-            'POP Remaining': '{:,.2f}',
-            'NR Remaining': '{:,.2f}',
-            'Dusky Remaining': '{:,.2f}'
-        }).apply(style_remaining, axis=1)
+    # Filter to only columns we want
+    available_cols = [c for c in display_cols.keys() if c in display_df.columns]
+    display_df = display_df[available_cols].rename(columns=display_cols)
 
-        st.dataframe(
-            styled_df,
-            use_container_width=True,
-            hide_index=True
+    # Sort by lowest % remaining
+    pct_cols = [c for c in display_df.columns if "%" in c]
+    if pct_cols:
+        display_df["_min_pct"] = display_df[pct_cols].min(axis=1)
+        display_df = display_df.sort_values("_min_pct").drop(columns=["_min_pct"])
+
+    # Apply styling with progress bars
+    def color_pct(val):
+        """Color based on risk level"""
+        if pd.isna(val):
+            return ""
+        if val < 10:
+            return "color: #dc2626"  # red
+        elif val < 50:
+            return "color: #d97706"  # amber
+        return "color: #059669"  # green
+
+    # Format and style
+    lbs_cols = [c for c in display_df.columns if "(lbs)" in c]
+    pct_cols = [c for c in display_df.columns if "%" in c]
+
+    format_dict = {c: "{:,.0f}" for c in lbs_cols}
+    format_dict.update({c: "{:.1f}%" for c in pct_cols})
+
+    styled_df = display_df.style.format(format_dict, na_rep="-")
+
+    # Add bars to percent columns
+    for col in pct_cols:
+        styled_df = styled_df.bar(
+            subset=[col],
+            vmin=0,
+            vmax=100,
+            color="#e0e7ff"  # light indigo
         )
-        st.caption(f"{len(display_df)} vessels")
 
-        # Legend
-        st.markdown("""
-        **Legend:**
-        <span style='background-color: #90EE90; padding: 2px 8px;'>Green: >50% remaining</span> |
-        <span style='background-color: #FFFF99; padding: 2px 8px;'>Yellow: 10-50% remaining</span> |
-        <span style='background-color: #FFB6C1; padding: 2px 8px;'>Red: <10% remaining</span>
-        """, unsafe_allow_html=True)
+    # Color the percent text
+    styled_df = styled_df.applymap(color_pct, subset=pct_cols)
 
-    except Exception as e:
-        st.error(f"Error loading quota remaining: {e}")
+    st.dataframe(styled_df, use_container_width=True, hide_index=True, height=500)
+
+    st.caption(f"Showing {len(display_df)} vessels")
+
+    # Store filtered_df for next sections
+    st.session_state.dashboard_filtered_df = filtered_df
