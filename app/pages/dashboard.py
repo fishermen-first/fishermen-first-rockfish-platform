@@ -96,6 +96,14 @@ def show():
 
 def render_dashboard():
     """Main dashboard layout with filters and KPI cards."""
+    # Handle clear filters action BEFORE widgets render
+    if st.session_state.get("clear_filters_clicked", False):
+        st.session_state.filter_coop = "All"
+        st.session_state.filter_species = "All"
+        st.session_state.filter_risk = "All"
+        st.session_state.clear_filters_clicked = False
+        st.rerun()
+
     # Custom CSS for KPI cards
     st.markdown("""
     <style>
@@ -142,9 +150,7 @@ def render_dashboard():
         with col4:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("Clear Filters"):
-                st.session_state.filter_coop = "All"
-                st.session_state.filter_species = "All"
-                st.session_state.filter_risk = "All"
+                st.session_state.clear_filters_clicked = True
                 st.rerun()
 
     # Apply filters
