@@ -56,12 +56,14 @@ def show_login():
 def show_sidebar():
     """Display sidebar with navigation and user info."""
     user = get_current_user()
+    role = st.session_state.get("user_role")
 
     with st.sidebar:
         st.title("Fishermen First")
         st.divider()
 
         st.caption(f"Logged in as: **{user.email}**")
+        st.caption(f"Role: **{role}**")
 
         if st.button("Log Out", use_container_width=True):
             logout()
@@ -69,16 +71,27 @@ def show_sidebar():
 
         st.divider()
 
-        # Navigation - Dashboard, Allocations, Rosters, Upload
-        nav_options = {
-            "dashboard": "Dashboard",
-            "allocations": "Allocations",
-            "rosters": "Rosters",
-            "upload": "Upload",
-        }
+        # Role-based navigation
+        if role in ["admin", "manager"]:
+            nav_options = {
+                "dashboard": "Dashboard",
+                "allocations": "Allocations",
+                "rosters": "Rosters",
+                "upload": "Upload",
+            }
+            default_page = "dashboard"
+        elif role == "processor":
+            nav_options = {
+                "processor_view": "Processor View",
+            }
+            default_page = "processor_view"
+        else:
+            nav_options = {}
+            default_page = None
 
-        if "current_page" not in st.session_state:
-            st.session_state.current_page = "dashboard"
+        # If current_page is not set or not valid for this role, reset to default
+        if "current_page" not in st.session_state or st.session_state.current_page not in nav_options:
+            st.session_state.current_page = default_page
 
         for page_key, page_label in nav_options.items():
             is_current = st.session_state.current_page == page_key
@@ -107,6 +120,11 @@ def show_current_page():
     elif page == "upload":
         from app.pages import upload
         upload.show()
+    elif page == "processor_view":
+        from app.pages import processor_view
+        processor_view.show()
+    elif page is None:
+        st.warning("No pages available for your role.")
     else:
         st.error("Page not found.")
 

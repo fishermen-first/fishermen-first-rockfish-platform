@@ -10,6 +10,8 @@ def init_session_state():
         st.session_state.user = None
     if "user_role" not in st.session_state:
         st.session_state.user_role = None
+    if "processor_code" not in st.session_state:
+        st.session_state.processor_code = None
     if "access_token" not in st.session_state:
         st.session_state.access_token = None
     if "refresh_token" not in st.session_state:
@@ -35,9 +37,10 @@ def login(email: str, password: str) -> tuple[bool, str]:
             st.session_state.access_token = response.session.access_token
             st.session_state.refresh_token = response.session.refresh_token
 
-            # Fetch user role from users table
-            role = fetch_user_role(response.user.id)
-            st.session_state.user_role = role
+            # Fetch user role and processor_code from user_profiles table
+            profile = get_user_profile(response.user.id)
+            st.session_state.user_role = profile["role"]
+            st.session_state.processor_code = profile["processor_code"]
 
             return True, "Login successful"
         else:
@@ -60,8 +63,13 @@ def logout():
     st.session_state.authenticated = False
     st.session_state.user = None
     st.session_state.user_role = None
+    st.session_state.processor_code = None
     st.session_state.access_token = None
     st.session_state.refresh_token = None
+
+    # Clear selected page so it resets on next login
+    if "current_page" in st.session_state:
+        del st.session_state.current_page
 
 
 def refresh_session() -> bool:
@@ -121,23 +129,23 @@ def is_authenticated() -> bool:
     return st.session_state.authenticated and st.session_state.user is not None
 
 
-def fetch_user_role(user_id: str) -> str | None:
+def get_user_profile(user_id: str) -> dict:
     """
-    Fetch user role from the users table.
+    Fetch user profile from the user_profiles table.
 
     Args:
         user_id: The user's UUID from Supabase Auth
 
     Returns:
-        The user's role ('admin' or 'co_op_manager') or None if not found
+        Dict with 'role' and 'processor_code' keys
     """
     try:
-        response = supabase.table("users").select("role").eq("id", user_id).single().execute()
+        response = supabase.table("user_profiles").select("role, processor_code").eq("user_id", user_id).execute()
         if response.data:
-            return response.data.get("role")
-        return None
+            return response.data[0]
+        return {"role": None, "processor_code": None}
     except Exception:
-        return None
+        return {"role": None, "processor_code": None}
 
 
 def get_current_user():
