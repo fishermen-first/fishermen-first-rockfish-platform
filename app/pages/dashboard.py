@@ -99,7 +99,7 @@ def render_dashboard():
     # Handle clear filters action BEFORE widgets render
     if st.session_state.get("clear_filters_clicked", False):
         st.session_state.filter_coop = "All"
-        st.session_state.filter_species = "All"
+        st.session_state.filter_vessel = "All"
         st.session_state.filter_risk = "All"
         st.session_state.clear_filters_clicked = False
         st.rerun()
@@ -142,7 +142,8 @@ def render_dashboard():
             selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
 
         with col2:
-            selected_species = st.selectbox("Species", ["All", "POP", "NR", "Dusky"], key="filter_species")
+            vessel_options = ["All"] + sorted(pivot_df["vessel_name"].dropna().unique().tolist())
+            selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel")
 
         with col3:
             selected_risk = st.selectbox("Risk Level", ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"], key="filter_risk")
@@ -158,6 +159,9 @@ def render_dashboard():
 
     if selected_coop != "All":
         filtered_df = filtered_df[filtered_df["coop_code"] == selected_coop]
+
+    if selected_vessel != "All":
+        filtered_df = filtered_df[filtered_df["vessel_name"] == selected_vessel]
 
     if selected_risk == "<10% Remaining":
         filtered_df = filtered_df[filtered_df["vessel_at_risk"] == True]
