@@ -106,9 +106,9 @@ def get_pct_color(pct):
 
 def kpi_card(label, value, subtitle=None):
     """Create a styled KPI card matching the species cards"""
-    subtitle_html = f'<div style="color: #64748b; font-size: 13px; margin-top: 6px;">{subtitle}</div>' if subtitle else ''
+    subtitle_html = f'<div style="color: #64748b; font-size: 13px; margin-top: 6px;">{subtitle}</div>' if subtitle else '<div style="height: 19px;"></div>'
     return f"""
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-height: 100px;">
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
         <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">{label}</div>
         <div style="font-size: 32px; font-weight: bold; color: #1e293b;">{value}</div>
         {subtitle_html}
@@ -120,7 +120,7 @@ def species_kpi_card(label, pct, remaining, allocated):
     """Generate HTML for a species KPI card"""
     color = get_pct_color(pct)
     return f"""
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-height: 100px;">
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
         <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">{label} Remaining</div>
         <div style="font-size: 32px; font-weight: bold; color: {color};">{pct:.0f}%</div>
         <div style="color: #64748b; font-size: 13px; margin-top: 6px;">
@@ -231,9 +231,10 @@ def render_dashboard():
     with kpi2:
         if vessels_at_risk > 0:
             st.markdown(f"""
-            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-height: 100px;">
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                 <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">Vessels at Risk</div>
                 <div style="font-size: 32px; font-weight: bold; color: #dc2626;">{vessels_at_risk}</div>
+                <div style="height: 19px;"></div>
             </div>
             """, unsafe_allow_html=True)
         else:
