@@ -85,6 +85,39 @@ def add_risk_flags(df):
     return df
 
 
+def format_lbs(value):
+    """Format pounds as M or K with 1 decimal"""
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    elif value >= 1_000:
+        return f"{value / 1_000:.1f}K"
+    else:
+        return f"{value:.0f}"
+
+
+def get_pct_color(pct):
+    """Return color based on percent remaining"""
+    if pct < 10:
+        return "#dc2626"  # red
+    elif pct < 50:
+        return "#d97706"  # amber
+    return "#1e293b"  # default dark
+
+
+def species_kpi_card(label, pct, remaining, allocated):
+    """Generate HTML for a species KPI card"""
+    color = get_pct_color(pct)
+    return f"""
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+        <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">{label} Remaining</div>
+        <div style="font-size: 32px; font-weight: bold; color: {color};">{pct:.0f}%</div>
+        <div style="color: #64748b; font-size: 13px; margin-top: 6px;">
+            <strong style="color: #475569;">{format_lbs(remaining)}</strong> of {format_lbs(allocated)} lbs
+        </div>
+    </div>
+    """
+
+
 # =============================================================================
 # Display functions
 # =============================================================================
@@ -100,7 +133,6 @@ def render_dashboard():
     if st.session_state.get("clear_filters_clicked", False):
         st.session_state.filter_coop = "All"
         st.session_state.filter_vessel = "All"
-        st.session_state.filter_risk = "All"
         st.session_state.clear_filters_clicked = False
         st.rerun()
 
@@ -134,33 +166,21 @@ def render_dashboard():
     pivot_df = add_risk_flags(pivot_df)
 
     # --- FILTER BAR ---
-    # Check if any advanced filters are active
-    advanced_filters_active = 0
-    if st.session_state.get("filter_risk", "All") != "All":
-        advanced_filters_active += 1
-
-    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+    col1, col2, col3 = st.columns([2, 2, 1])
 
     with col1:
+        st.caption("Co-Op")
         coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
-        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
+        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop", label_visibility="collapsed")
 
     with col2:
+        st.caption("Vessel")
         vessel_options = ["All"] + sorted(pivot_df["vessel_name"].dropna().unique().tolist())
-        selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel")
+        selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel", label_visibility="collapsed")
 
     with col3:
-        if advanced_filters_active > 0:
-            popover_label = f"More Filters ({advanced_filters_active})"
-        else:
-            popover_label = "More Filters"
-
-        with st.popover(popover_label):
-            risk_options = ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"]
-            selected_risk = st.selectbox("Risk Level", risk_options, key="filter_risk")
-
-    with col4:
-        if st.button("Clear Filters"):
+        st.caption("")  # Spacer for alignment
+        if st.button("Clear Filters", use_container_width=True):
             st.session_state.clear_filters_clicked = True
             st.rerun()
 
@@ -173,37 +193,26 @@ def render_dashboard():
     if selected_vessel != "All":
         filtered_df = filtered_df[filtered_df["vessel_name"] == selected_vessel]
 
-    if selected_risk == "<10% Remaining":
-        filtered_df = filtered_df[filtered_df["vessel_at_risk"] == True]
-    elif selected_risk == "10-50% Remaining":
-        mask = False
-        for species in ["POP", "NR", "Dusky"]:
-            col = f"{species}_pct_remaining"
-            if col in filtered_df.columns:
-                mask = mask | ((filtered_df[col] >= 10) & (filtered_df[col] < 50))
-        filtered_df = filtered_df[mask]
-    elif selected_risk == ">50% Remaining":
-        mask = True
-        for species in ["POP", "NR", "Dusky"]:
-            col = f"{species}_pct_remaining"
-            if col in filtered_df.columns:
-                mask = mask & (filtered_df[col] >= 50)
-        filtered_df = filtered_df[mask]
-
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- KPI CARDS ---
     total_vessels = len(filtered_df)
     vessels_at_risk = filtered_df["vessel_at_risk"].sum()
 
-    avg_pct_cols = [f"{s}_pct_remaining" for s in ["POP", "NR", "Dusky"] if f"{s}_pct_remaining" in filtered_df.columns]
-    avg_pct = filtered_df[avg_pct_cols].mean().mean() if avg_pct_cols else 0
+    # Calculate totals for each species
+    total_pop_remaining = filtered_df["POP_remaining_lbs"].sum() if "POP_remaining_lbs" in filtered_df.columns else 0
+    total_pop_allocated = filtered_df["POP_allocation_lbs"].sum() if "POP_allocation_lbs" in filtered_df.columns else 0
+    total_pop_pct = (total_pop_remaining / total_pop_allocated * 100) if total_pop_allocated > 0 else 0
 
-    total_pop = filtered_df["POP_remaining_lbs"].sum() if "POP_remaining_lbs" in filtered_df.columns else 0
-    total_nr = filtered_df["NR_remaining_lbs"].sum() if "NR_remaining_lbs" in filtered_df.columns else 0
-    total_dusky = filtered_df["Dusky_remaining_lbs"].sum() if "Dusky_remaining_lbs" in filtered_df.columns else 0
+    total_nr_remaining = filtered_df["NR_remaining_lbs"].sum() if "NR_remaining_lbs" in filtered_df.columns else 0
+    total_nr_allocated = filtered_df["NR_allocation_lbs"].sum() if "NR_allocation_lbs" in filtered_df.columns else 0
+    total_nr_pct = (total_nr_remaining / total_nr_allocated * 100) if total_nr_allocated > 0 else 0
 
-    kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
+    total_dusky_remaining = filtered_df["Dusky_remaining_lbs"].sum() if "Dusky_remaining_lbs" in filtered_df.columns else 0
+    total_dusky_allocated = filtered_df["Dusky_allocation_lbs"].sum() if "Dusky_allocation_lbs" in filtered_df.columns else 0
+    total_dusky_pct = (total_dusky_remaining / total_dusky_allocated * 100) if total_dusky_allocated > 0 else 0
+
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
     with kpi1:
         st.metric("Vessels Tracked", f"{total_vessels}")
@@ -218,13 +227,11 @@ def render_dashboard():
         else:
             st.metric("Vessels at Risk", f"{vessels_at_risk}")
     with kpi3:
-        st.metric("Avg % Remaining", f"{avg_pct:.1f}%")
+        st.markdown(species_kpi_card("POP", total_pop_pct, total_pop_remaining, total_pop_allocated), unsafe_allow_html=True)
     with kpi4:
-        st.metric("Total POP (lbs)", f"{total_pop:,.0f}")
+        st.markdown(species_kpi_card("NR", total_nr_pct, total_nr_remaining, total_nr_allocated), unsafe_allow_html=True)
     with kpi5:
-        st.metric("Total NR (lbs)", f"{total_nr:,.0f}")
-    with kpi6:
-        st.metric("Total Dusky (lbs)", f"{total_dusky:,.0f}")
+        st.markdown(species_kpi_card("Dusky", total_dusky_pct, total_dusky_remaining, total_dusky_allocated), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
