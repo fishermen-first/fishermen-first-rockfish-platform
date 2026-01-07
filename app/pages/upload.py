@@ -21,7 +21,7 @@ BALANCE_COLUMN_MAP = {
 }
 
 
-def import_account_balance(df, filename, user_email):
+def import_account_balance(df, filename):
     """Import account balance data into account_balances_raw table."""
     from app.config import supabase
 
@@ -30,7 +30,6 @@ def import_account_balance(df, filename, user_email):
 
     # Add metadata
     df_import['source_file'] = filename
-    df_import['created_by'] = user_email
 
     # Convert to list of dicts for insert
     records = df_import.to_dict('records')
@@ -67,10 +66,7 @@ def show():
                 st.error(f"Missing required columns: {missing_cols}")
             else:
                 if st.button("Import Account Balance", key="import_balance"):
-                    # Get current user email from session
-                    user_email = st.session_state.get("user", {}).get("email", "unknown")
-
-                    success, count, error = import_account_balance(df, balance_file.name, user_email)
+                    success, count, error = import_account_balance(df, balance_file.name)
 
                     if success:
                         st.success(f"Successfully imported {count} records")

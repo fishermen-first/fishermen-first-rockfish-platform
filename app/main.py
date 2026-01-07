@@ -78,6 +78,7 @@ def show_sidebar():
                 "allocations": "Allocations",
                 "rosters": "Rosters",
                 "upload": "Upload",
+                "account_balances": "Account Balances",
             }
             default_page = "dashboard"
         elif role == "processor":
@@ -120,6 +121,9 @@ def show_current_page():
     elif page == "upload":
         from app.pages import upload
         upload.show()
+    elif page == "account_balances":
+        from app.pages import account_balances
+        account_balances.show()
     elif page == "processor_view":
         from app.pages import processor_view
         processor_view.show()
