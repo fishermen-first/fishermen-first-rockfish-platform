@@ -134,25 +134,35 @@ def render_dashboard():
     pivot_df = add_risk_flags(pivot_df)
 
     # --- FILTER BAR ---
-    with st.expander("Filters", expanded=False):
-        col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+    # Check if any advanced filters are active
+    advanced_filters_active = 0
+    if st.session_state.get("filter_risk", "All") != "All":
+        advanced_filters_active += 1
 
-        with col1:
-            coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
-            selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
-        with col2:
-            vessel_options = ["All"] + sorted(pivot_df["vessel_name"].dropna().unique().tolist())
-            selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel")
+    with col1:
+        coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
+        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
 
-        with col3:
-            selected_risk = st.selectbox("Risk Level", ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"], key="filter_risk")
+    with col2:
+        vessel_options = ["All"] + sorted(pivot_df["vessel_name"].dropna().unique().tolist())
+        selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel")
 
-        with col4:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Clear Filters"):
-                st.session_state.clear_filters_clicked = True
-                st.rerun()
+    with col3:
+        if advanced_filters_active > 0:
+            popover_label = f"More Filters ({advanced_filters_active})"
+        else:
+            popover_label = "More Filters"
+
+        with st.popover(popover_label):
+            risk_options = ["All", ">50% Remaining", "10-50% Remaining", "<10% Remaining"]
+            selected_risk = st.selectbox("Risk Level", risk_options, key="filter_risk")
+
+    with col4:
+        if st.button("Clear Filters"):
+            st.session_state.clear_filters_clicked = True
+            st.rerun()
 
     # Apply filters
     filtered_df = pivot_df.copy()
