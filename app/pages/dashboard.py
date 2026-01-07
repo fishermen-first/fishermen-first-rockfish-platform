@@ -104,11 +104,23 @@ def get_pct_color(pct):
     return "#1e293b"  # default dark
 
 
+def kpi_card(label, value, subtitle=None):
+    """Create a styled KPI card matching the species cards"""
+    subtitle_html = f'<div style="color: #64748b; font-size: 13px; margin-top: 6px;">{subtitle}</div>' if subtitle else ''
+    return f"""
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-height: 100px;">
+        <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">{label}</div>
+        <div style="font-size: 32px; font-weight: bold; color: #1e293b;">{value}</div>
+        {subtitle_html}
+    </div>
+    """
+
+
 def species_kpi_card(label, pct, remaining, allocated):
     """Generate HTML for a species KPI card"""
     color = get_pct_color(pct)
     return f"""
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-height: 100px;">
         <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">{label} Remaining</div>
         <div style="font-size: 32px; font-weight: bold; color: {color};">{pct:.0f}%</div>
         <div style="color: #64748b; font-size: 13px; margin-top: 6px;">
@@ -179,7 +191,7 @@ def render_dashboard():
         selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel", label_visibility="collapsed")
 
     with col3:
-        st.caption("")  # Spacer for alignment
+        st.caption(" ")  # Empty label to align with dropdowns
         if st.button("Clear Filters", use_container_width=True):
             st.session_state.clear_filters_clicked = True
             st.rerun()
@@ -215,17 +227,17 @@ def render_dashboard():
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
     with kpi1:
-        st.metric("Vessels Tracked", f"{total_vessels}")
+        st.markdown(kpi_card("Vessels Tracked", str(total_vessels)), unsafe_allow_html=True)
     with kpi2:
         if vessels_at_risk > 0:
             st.markdown(f"""
-                <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px;">
-                    <p style="color: #64748b; font-size: 14px; margin: 0;">Vessels at Risk</p>
-                    <p style="color: #dc2626; font-size: 32px; font-weight: bold; margin: 0;">{vessels_at_risk}</p>
-                </div>
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); min-height: 100px;">
+                <div style="color: #64748b; font-size: 14px; margin-bottom: 4px;">Vessels at Risk</div>
+                <div style="font-size: 32px; font-weight: bold; color: #dc2626;">{vessels_at_risk}</div>
+            </div>
             """, unsafe_allow_html=True)
         else:
-            st.metric("Vessels at Risk", f"{vessels_at_risk}")
+            st.markdown(kpi_card("Vessels at Risk", "0"), unsafe_allow_html=True)
     with kpi3:
         st.markdown(species_kpi_card("POP", total_pop_pct, total_pop_remaining, total_pop_allocated), unsafe_allow_html=True)
     with kpi4:
