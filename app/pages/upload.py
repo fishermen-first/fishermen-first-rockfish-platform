@@ -25,6 +25,24 @@ def import_account_balance(df, filename):
     """Import account balance data into account_balances_raw table."""
     from app.config import supabase
 
+    # Get unique balance_date and account_name combinations from uploaded file
+    unique_combos = df[['Balance Date', 'Account Name']].drop_duplicates()
+
+    # Check for existing records
+    duplicates = []
+    for _, row in unique_combos.iterrows():
+        existing = supabase.table("account_balances_raw")\
+            .select("id")\
+            .eq("balance_date", row['Balance Date'])\
+            .eq("account_name", row['Account Name'])\
+            .execute()
+
+        if existing.data:
+            duplicates.append(f"{row['Account Name']} on {row['Balance Date']}")
+
+    if duplicates:
+        return False, 0, f"Duplicate data already exists for: {', '.join(duplicates)}"
+
     # Rename columns to match database
     df_import = df.rename(columns=BALANCE_COLUMN_MAP)
 
@@ -70,6 +88,8 @@ def show():
 
                     if success:
                         st.success(f"Successfully imported {count} records")
+                    elif error and error.startswith("Duplicate"):
+                        st.warning(f"{error}")
                     else:
                         st.error(f"Import failed: {error}")
         except Exception as e:
