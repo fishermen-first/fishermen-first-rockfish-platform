@@ -79,6 +79,7 @@ def show_sidebar():
                 "rosters": "Rosters",
                 "upload": "Upload",
                 "account_balances": "Account Balances",
+                "account_detail": "Account Detail",
             }
             default_page = "dashboard"
         elif role == "processor":
@@ -124,6 +125,9 @@ def show_current_page():
     elif page == "account_balances":
         from app.views import account_balances
         account_balances.show()
+    elif page == "account_detail":
+        from app.views import account_detail
+        account_detail.show()
     elif page == "processor_view":
         from app.views import processor_view
         processor_view.show()
