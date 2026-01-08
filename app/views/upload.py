@@ -20,6 +20,25 @@ BALANCE_COLUMN_MAP = {
     'Quota Pool Type Code': 'quota_pool_type_code'
 }
 
+# Column mapping for Account Detail Excel
+DETAIL_COLUMN_MAP = {
+    'Catch Activity Date': 'catch_activity_date',
+    'Processor Permit': 'processor_permit',
+    'Vessel Name': 'vessel_name',
+    'ADFG': 'adfg',
+    'Catch Report Type': 'catch_report_type',
+    'Haul Number': 'haul_number',
+    'Report Number': 'report_number',
+    'Landing Date': 'landing_date',
+    'Gear Code': 'gear_code',
+    'Reporting Area': 'reporting_area',
+    'Special Area': 'special_area',
+    'Species Name': 'species_name',
+    'Weight Posted': 'weight_posted',
+    'Count Posted': 'count_posted',
+    'Precedence': 'precedence'
+}
+
 
 def import_account_balance(df, filename):
     """Import account balance data into account_balances_raw table."""
@@ -76,6 +95,45 @@ def import_account_balance(df, filename):
         return False, 0, str(e)
 
 
+def import_account_detail(df, filename):
+    """Import account detail data into account_detail_raw table."""
+    from app.config import supabase
+
+    # Check for duplicates using report_number
+    report_numbers = df['Report Number'].dropna().unique().tolist()
+
+    if report_numbers:
+        # Check which report numbers already exist
+        existing = supabase.table("account_detail_raw")\
+            .select("report_number")\
+            .in_("report_number", [str(rn) for rn in report_numbers])\
+            .execute()
+
+        if existing.data:
+            existing_count = len(existing.data)
+            return False, 0, f"Data already exists for {existing_count} report number(s). Upload rejected."
+
+    # Rename columns to match database
+    df_import = df.rename(columns=DETAIL_COLUMN_MAP)
+
+    # Add metadata
+    df_import['source_file'] = filename
+
+    # Handle NaN values - convert to None for database
+    df_import = df_import.where(pd.notnull(df_import), None)
+
+    # Convert to list of dicts for insert
+    records = df_import.to_dict('records')
+
+    # Insert into database
+    try:
+        if records:
+            response = supabase.table('account_detail_raw').insert(records).execute()
+        return True, len(records), None
+    except Exception as e:
+        return False, 0, str(e)
+
+
 def show():
     """Display the upload page with two upload sections."""
     st.header("Upload")
@@ -125,7 +183,21 @@ def show():
             st.write(f"Preview: {len(df)} rows")
             st.dataframe(df, use_container_width=True)
 
-            if st.button("Import Catch Detail", key="import_detail"):
-                st.info("Import logic coming soon")
+            # Validate columns
+            required_cols = list(DETAIL_COLUMN_MAP.keys())
+            missing_cols = [c for c in required_cols if c not in df.columns]
+
+            if missing_cols:
+                st.error(f"Missing required columns: {missing_cols}")
+            else:
+                if st.button("Import Catch Detail", key="import_detail"):
+                    success, count, error = import_account_detail(df, detail_file.name)
+
+                    if success:
+                        st.success(f"Successfully imported {count} records")
+                    elif error and "already exists" in error:
+                        st.warning(f"{error}")
+                    else:
+                        st.error(f"Import failed: {error}")
         except Exception as e:
             st.error(f"Error reading file: {e}")
