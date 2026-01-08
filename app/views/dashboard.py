@@ -183,17 +183,16 @@ def render_dashboard():
     col1, col2, col3 = st.columns([2, 2, 1])
 
     with col1:
-        st.caption("Co-Op")
         coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
-        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop", label_visibility="collapsed")
+        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
 
     with col2:
-        st.caption("Vessel")
         vessel_options = ["All"] + sorted(pivot_df["vessel_name"].dropna().unique().tolist())
-        selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel", label_visibility="collapsed")
+        selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel")
 
     with col3:
-        st.caption(" ")
+        st.write("")  # Add vertical space
+        st.write("")  # Add more vertical space to align with dropdown
         if st.button("Clear Filters", use_container_width=True):
             st.session_state.clear_filters_clicked = True
             st.rerun()
