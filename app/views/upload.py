@@ -133,6 +133,13 @@ def import_account_detail(df, filename):
     # Convert to list of dicts for insert
     records = df_import.to_dict('records')
 
+    # Replace nan with None (JSON doesn't support nan)
+    import math
+    for record in records:
+        for key, value in record.items():
+            if isinstance(value, float) and math.isnan(value):
+                record[key] = None
+
     # Debug: print what we're sending
     import json
 
