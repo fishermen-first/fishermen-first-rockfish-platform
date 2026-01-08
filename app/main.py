@@ -77,6 +77,7 @@ def show_sidebar():
                 "dashboard": "Dashboard",
                 "account_balances": "Account Balances",
                 "account_detail": "Account Detail",
+                "transfers": "Transfers",
                 "allocations": "Allocations",
                 "rosters": "Rosters",
                 "upload": "Upload",
@@ -128,6 +129,9 @@ def show_current_page():
     elif page == "account_detail":
         from app.views import account_detail
         account_detail.show()
+    elif page == "transfers":
+        from app.views import transfers
+        transfers.show()
     elif page == "processor_view":
         from app.views import processor_view
         processor_view.show()
