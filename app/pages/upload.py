@@ -38,10 +38,26 @@ def import_account_balance(df, filename):
             .execute()
 
         if existing.data:
-            duplicates.append(f"{row['Account Name']} on {row['Balance Date']}")
+            # Extract co-op name from account name (e.g., "Silver Bay" from "CGOA POP CV Coop Silver Bay")
+            account_name = row['Account Name']
+            if 'Silver Bay' in account_name:
+                coop = 'Silver Bay'
+            elif 'North Pacific' in account_name:
+                coop = 'North Pacific'
+            elif 'OBSI' in account_name:
+                coop = 'OBSI'
+            elif 'Star of Kodiak' in account_name:
+                coop = 'Star of Kodiak'
+            else:
+                coop = account_name
+
+            date = row['Balance Date']
+            coop_date = f"{coop} ({date})"
+            if coop_date not in duplicates:
+                duplicates.append(coop_date)
 
     if duplicates:
-        return False, 0, f"Duplicate data already exists for: {', '.join(duplicates)}"
+        return False, 0, f"Data already exists for: {', '.join(duplicates)}"
 
     # Rename columns to match database
     df_import = df.rename(columns=BALANCE_COLUMN_MAP)
