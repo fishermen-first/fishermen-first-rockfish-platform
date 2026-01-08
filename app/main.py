@@ -110,22 +110,22 @@ def show_current_page():
     page = st.session_state.get("current_page", "dashboard")
 
     if page == "dashboard":
-        from app.pages import dashboard
+        from app.views import dashboard
         dashboard.show()
     elif page == "allocations":
-        from app.pages import allocations
+        from app.views import allocations
         allocations.show()
     elif page == "rosters":
-        from app.pages import rosters
+        from app.views import rosters
         rosters.show()
     elif page == "upload":
-        from app.pages import upload
+        from app.views import upload
         upload.show()
     elif page == "account_balances":
-        from app.pages import account_balances
+        from app.views import account_balances
         account_balances.show()
     elif page == "processor_view":
-        from app.pages import processor_view
+        from app.views import processor_view
         processor_view.show()
     elif page is None:
         st.warning("No pages available for your role.")
