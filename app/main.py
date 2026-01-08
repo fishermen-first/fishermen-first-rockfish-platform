@@ -75,11 +75,11 @@ def show_sidebar():
         if role in ["admin", "manager"]:
             nav_options = {
                 "dashboard": "Dashboard",
+                "account_balances": "Account Balances",
+                "account_detail": "Account Detail",
                 "allocations": "Allocations",
                 "rosters": "Rosters",
                 "upload": "Upload",
-                "account_balances": "Account Balances",
-                "account_detail": "Account Detail",
             }
             default_page = "dashboard"
         elif role == "processor":
