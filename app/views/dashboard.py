@@ -193,7 +193,7 @@ def render_dashboard():
         selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel", label_visibility="collapsed")
 
     with col3:
-        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+        st.caption(" ")
         if st.button("Clear Filters", use_container_width=True):
             st.session_state.clear_filters_clicked = True
             st.rerun()
@@ -242,11 +242,11 @@ def render_dashboard():
         else:
             st.markdown(kpi_card("Vessels at Risk", "0"), unsafe_allow_html=True)
     with kpi3:
-        st.markdown(species_kpi_card("POP", total_pop_pct, total_pop_remaining, total_pop_allocated), unsafe_allow_html=True)
+        st.markdown(species_kpi_card("POP Remaining", total_pop_pct, total_pop_remaining, total_pop_allocated), unsafe_allow_html=True)
     with kpi4:
-        st.markdown(species_kpi_card("NR", total_nr_pct, total_nr_remaining, total_nr_allocated), unsafe_allow_html=True)
+        st.markdown(species_kpi_card("NR Remaining", total_nr_pct, total_nr_remaining, total_nr_allocated), unsafe_allow_html=True)
     with kpi5:
-        st.markdown(species_kpi_card("Dusky", total_dusky_pct, total_dusky_remaining, total_dusky_allocated), unsafe_allow_html=True)
+        st.markdown(species_kpi_card("Dusky Remaining", total_dusky_pct, total_dusky_remaining, total_dusky_allocated), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
