@@ -119,6 +119,14 @@ def import_account_detail(df, filename):
     # Add metadata
     df_import['source_file'] = filename
 
+    # Convert date columns to strings for JSON serialization
+    date_columns = ['catch_activity_date', 'landing_date']
+    for col in date_columns:
+        if col in df_import.columns:
+            df_import[col] = df_import[col].apply(
+                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else None
+            )
+
     # Handle NaN values - convert to None for database
     df_import = df_import.where(pd.notnull(df_import), None)
 
