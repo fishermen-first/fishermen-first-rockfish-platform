@@ -18,6 +18,11 @@ def show():
 
     df = pd.DataFrame(response.data)
 
+    # Show last uploaded time
+    if 'created_at' in df.columns:
+        last_upload = pd.to_datetime(df['created_at']).max()
+        st.caption(f"Last uploaded: {last_upload.strftime('%B %d, %Y at %I:%M %p')}")
+
     # Reorder columns for readability
     column_order = [
         "coop_code",

@@ -32,26 +32,63 @@ def show_total_allocation():
     st.subheader("2026 TAC")
 
     try:
-        response = supabase.table("annual_tac").select(
-            "species_code, tac_mt, qs_pool, tac_lbs"
-        ).eq("year", 2026).order("species_code").execute()
+        # Get target species from annual_tac
+        response = supabase.table("annual_tac").select("*").eq("year", 2026).execute()
+        target_df = pd.DataFrame(response.data) if response.data else pd.DataFrame()
 
-        if response.data:
-            df = pd.DataFrame(response.data)
-            df["Species"] = df["species_code"].map(SPECIES_NAMES)
-            df = df.rename(columns={
-                "tac_mt": "TAC (mt)",
-                "qs_pool": "QS Pool",
-                "tac_lbs": "TAC (lbs)"
-            })
-            df = df[["Species", "TAC (mt)", "QS Pool", "TAC (lbs)"]]
+        # Get PSC species (excluding Halibut) from psc_allocations
+        psc_response = supabase.table("psc_allocations").select("*").eq("year", 2026).execute()
+        if psc_response.data:
+            psc_df = pd.DataFrame(psc_response.data)
+            # Filter to Cod (110), Thornyhead (143), Sablefish (710) - exclude Halibut (200)
+            psc_df = psc_df[psc_df['species_code'].isin([110, 143, 710])]
 
-            df_styled = df.style.format({
+            # Map species codes to names
+            species_names = {110: 'Pacific Cod', 143: 'Thornyhead', 710: 'Sablefish'}
+            psc_df['species_name'] = psc_df['species_code'].map(species_names)
+
+            # Rename cv_sector_lbs to match annual_tac format
+            psc_df = psc_df.rename(columns={'cv_sector_lbs': 'tac_lbs'})
+            psc_df['tac_mt'] = None
+            psc_df['qs_pool'] = None
+        else:
+            psc_df = pd.DataFrame()
+
+        # Combine for display
+        if not target_df.empty:
+            # Map species codes for target species
+            target_names = {141: 'Pacific Ocean Perch', 136: 'Northern Rockfish', 172: 'Dusky Rockfish'}
+            target_df['species_name'] = target_df['species_code'].map(target_names)
+
+        # Build combined display dataframe
+        display_rows = []
+
+        if not target_df.empty:
+            for _, row in target_df.iterrows():
+                display_rows.append({
+                    'Species': row.get('species_name', ''),
+                    'TAC (mt)': row.get('tac_mt'),
+                    'QS Pool': row.get('qs_pool'),
+                    'TAC (lbs)': row.get('tac_lbs')
+                })
+
+        if not psc_df.empty:
+            for _, row in psc_df.iterrows():
+                display_rows.append({
+                    'Species': row.get('species_name', ''),
+                    'TAC (mt)': None,
+                    'QS Pool': None,
+                    'TAC (lbs)': row.get('tac_lbs')
+                })
+
+        if display_rows:
+            display_df = pd.DataFrame(display_rows)
+            styled_df = display_df.style.format({
                 'TAC (mt)': '{:,.0f}',
                 'QS Pool': '{:,.0f}',
                 'TAC (lbs)': '{:,.0f}'
-            })
-            st.dataframe(df_styled, use_container_width=True, hide_index=True)
+            }, na_rep='-')
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
         else:
             st.info("No TAC data for 2026.")
     except Exception as e:
@@ -137,17 +174,17 @@ def show_vessel_allocations():
 
 
 def show_psc_allocations():
-    """Tab 3: PSC Allocations."""
+    """Tab 3: PSC Allocations (Halibut only)."""
     st.subheader("PSC Allocations (2026)")
 
     try:
         response = supabase.table("psc_allocations").select(
             "species_code, cv_sector_lbs"
-        ).eq("year", 2026).order("species_code").execute()
+        ).eq("year", 2026).eq("species_code", 200).execute()
 
         if response.data:
             df = pd.DataFrame(response.data)
-            df["Species"] = df["species_code"].map(PSC_SPECIES_NAMES)
+            df["Species"] = "Halibut"
             df = df.rename(columns={
                 "cv_sector_lbs": "CV Sector (lbs)"
             })
