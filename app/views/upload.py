@@ -20,6 +20,66 @@ BALANCE_COLUMN_MAP = {
     'Quota Pool Type Code': 'quota_pool_type_code'
 }
 
+def detect_balance_duplicates(df):
+    """
+    Detect duplicate rows within an account balance file.
+
+    Duplicates are based on: Balance Date + Account Id + Species Group Id
+
+    Returns:
+        Tuple of (has_duplicates: bool, duplicate_count: int, duplicate_info: str)
+    """
+    key_cols = ['Balance Date', 'Account Id', 'Species Group Id']
+
+    # Check if all key columns exist
+    missing = [c for c in key_cols if c not in df.columns]
+    if missing:
+        return False, 0, ""
+
+    duplicates = df[df.duplicated(subset=key_cols, keep=False)]
+
+    if len(duplicates) > 0:
+        dup_count = len(duplicates) - len(df[df.duplicated(subset=key_cols, keep='first')])
+        # Get sample of what's duplicated
+        dup_sample = duplicates.groupby(key_cols).size().reset_index(name='count')
+        dup_sample = dup_sample[dup_sample['count'] > 1].head(3)
+
+        info_parts = []
+        for _, row in dup_sample.iterrows():
+            info_parts.append(f"{row['Account Id']} / {row['Species Group Id']} on {row['Balance Date']}")
+
+        info = f"Found {dup_count} duplicate row(s). Examples: {'; '.join(info_parts)}"
+        return True, dup_count, info
+
+    return False, 0, ""
+
+
+def detect_detail_duplicates(df):
+    """
+    Detect duplicate rows within an account detail file.
+
+    Duplicates are based on: Report Number
+
+    Returns:
+        Tuple of (has_duplicates: bool, duplicate_count: int, duplicate_info: str)
+    """
+    if 'Report Number' not in df.columns:
+        return False, 0, ""
+
+    # Only check non-null report numbers
+    report_nums = df['Report Number'].dropna()
+    duplicates = report_nums[report_nums.duplicated(keep=False)]
+
+    if len(duplicates) > 0:
+        dup_count = len(duplicates) - len(report_nums[report_nums.duplicated(keep='first')])
+        unique_dups = duplicates.unique()[:5]  # Show up to 5 examples
+
+        info = f"Found {dup_count} duplicate report number(s): {', '.join(str(x) for x in unique_dups)}"
+        return True, dup_count, info
+
+    return False, 0, ""
+
+
 # Column mapping for Account Detail Excel
 DETAIL_COLUMN_MAP = {
     'Catch Activity Date': 'catch_activity_date',
@@ -188,12 +248,17 @@ def show():
             if missing_cols:
                 st.error(f"Missing required columns: {missing_cols}")
             else:
+                # Check for duplicates within the file
+                has_dups, dup_count, dup_info = detect_balance_duplicates(df)
+                if has_dups:
+                    st.warning(f"Warning: {dup_info}")
+
                 if st.button("Import Account Balance", key="import_balance"):
                     success, count, error = import_account_balance(df, balance_file.name)
 
                     if success:
                         st.success(f"Successfully imported {count} records")
-                    elif error and error.startswith("Duplicate"):
+                    elif error and error.startswith("Data already"):
                         st.warning(f"{error}")
                     else:
                         st.error(f"Import failed: {error}")
@@ -221,6 +286,11 @@ def show():
             if missing_cols:
                 st.error(f"Missing required columns: {missing_cols}")
             else:
+                # Check for duplicates within the file
+                has_dups, dup_count, dup_info = detect_detail_duplicates(df)
+                if has_dups:
+                    st.warning(f"Warning: {dup_info}")
+
                 if st.button("Import Catch Detail", key="import_detail"):
                     success, count, error = import_account_detail(df, detail_file.name)
 

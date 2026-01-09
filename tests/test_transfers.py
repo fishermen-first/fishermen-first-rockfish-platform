@@ -468,9 +468,27 @@ class TestTransferEdgeCases:
         )
 
         call_args = mock_supabase.table.return_value.insert.call_args[0][0]
-        # Current behavior: whitespace is kept. This documents it.
-        # If we want to strip, the test will fail and remind us to fix.
-        assert call_args['notes'] == '   ' or call_args['notes'] is None
+        assert call_args['notes'] is None  # Whitespace stripped to None
+
+    @patch('app.views.transfers.supabase')
+    def test_notes_with_surrounding_whitespace_stripped(self, mock_supabase):
+        """Notes with surrounding whitespace should be trimmed."""
+        mock_response = MagicMock()
+        mock_response.data = [{'id': 'new-uuid'}]
+        mock_supabase.table.return_value.insert.return_value.execute.return_value = mock_response
+
+        from app.views.transfers import insert_transfer
+        insert_transfer(
+            from_llp='LLN111111111',
+            to_llp='LLN222222222',
+            species_code=141,
+            pounds=1000.0,
+            notes='  Actual note content  ',
+            user_id='user-123'
+        )
+
+        call_args = mock_supabase.table.return_value.insert.call_args[0][0]
+        assert call_args['notes'] == 'Actual note content'
 
     def test_float_precision_edge_case(self):
         """Float precision shouldn't cause false validation failures."""

@@ -22,8 +22,17 @@ def get_quota_data():
     # Join
     df = df.merge(members_df, on="llp", how="left")
 
-    # Map species codes to names
+    # Map species codes to names and filter to only known target species
     df["species"] = df["species_code"].map(SPECIES_MAP)
+
+    # Filter out unknown species codes (non-target species like PSC)
+    unknown_count = df["species"].isna().sum()
+    if unknown_count > 0:
+        # Log for debugging but don't show to user
+        unknown_codes = df[df["species"].isna()]["species_code"].unique().tolist()
+        print(f"Filtered {unknown_count} rows with unknown species codes: {unknown_codes}")
+
+    df = df[df["species"].notna()].copy()
 
     # Calculate percent remaining (handle 0 allocation)
     df["pct_remaining"] = df.apply(

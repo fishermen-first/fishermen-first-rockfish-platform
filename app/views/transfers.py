@@ -121,6 +121,10 @@ def insert_transfer(
         Tuple of (success: bool, count: int, error: str | None)
     """
     try:
+        # Strip whitespace and convert empty/whitespace-only to None
+        clean_notes = notes.strip() if notes else None
+        clean_notes = clean_notes if clean_notes else None
+
         record = {
             "from_llp": from_llp,
             "to_llp": to_llp,
@@ -128,7 +132,7 @@ def insert_transfer(
             "year": CURRENT_YEAR,
             "pounds": pounds,
             "transfer_date": date.today().isoformat(),
-            "notes": notes if notes else None,
+            "notes": clean_notes,
             "created_by": user_id,
             "is_deleted": False
         }

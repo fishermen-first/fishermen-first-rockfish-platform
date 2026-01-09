@@ -508,7 +508,7 @@ class TestEdgeCases:
 
     @patch('app.views.dashboard.supabase')
     def test_unknown_species_code_in_data(self, mock_supabase):
-        """Should handle species codes not in SPECIES_MAP."""
+        """Should filter out species codes not in SPECIES_MAP."""
         quota_response = MagicMock()
         quota_response.data = [{
             'llp': 'LLP1',
@@ -532,10 +532,40 @@ class TestEdgeCases:
 
         from app.views.dashboard import get_quota_data
 
-        # Should not crash - unknown codes should be filtered or handled
+        # Unknown species should be filtered out
         result = get_quota_data()
-        # Unknown species should be excluded (only target species in SPECIES_MAP)
-        assert len(result) == 0 or 'species' not in result.columns or result['species'].iloc[0] != 999
+        assert len(result) == 0  # Row with unknown species filtered out
+
+    @patch('app.views.dashboard.supabase')
+    def test_mixed_known_and_unknown_species(self, mock_supabase):
+        """Should keep known species and filter unknown ones."""
+        quota_response = MagicMock()
+        quota_response.data = [
+            {'llp': 'LLP1', 'species_code': 141, 'remaining_lbs': 5000, 'allocation_lbs': 10000},  # POP - keep
+            {'llp': 'LLP1', 'species_code': 999, 'remaining_lbs': 1000, 'allocation_lbs': 2000},   # Unknown - filter
+            {'llp': 'LLP1', 'species_code': 136, 'remaining_lbs': 3000, 'allocation_lbs': 6000},   # NR - keep
+        ]
+
+        members_response = MagicMock()
+        members_response.data = [{'llp': 'LLP1', 'vessel_name': 'Test', 'coop_code': 'SB'}]
+
+        def table_side_effect(table_name):
+            mock_table = MagicMock()
+            if table_name == 'quota_remaining':
+                mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
+            else:
+                mock_table.select.return_value.execute.return_value = members_response
+            return mock_table
+
+        mock_supabase.table.side_effect = table_side_effect
+
+        from app.views.dashboard import get_quota_data
+
+        result = get_quota_data()
+
+        # Should have 2 rows (POP and NR), not 3
+        assert len(result) == 2
+        assert set(result['species'].tolist()) == {'POP', 'NR'}
 
     def test_pivot_with_missing_species(self):
         """Should handle vessel with only some species data."""

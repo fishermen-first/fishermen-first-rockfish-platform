@@ -421,6 +421,138 @@ class TestColumnValidation:
         assert 'Weight Posted' in missing_cols
 
 
+class TestDetectBalanceDuplicates:
+    """Tests for detect_balance_duplicates function."""
+
+    def test_no_duplicates_returns_false(self):
+        """Should return False when no duplicates exist."""
+        from app.views.upload import detect_balance_duplicates
+
+        df = pd.DataFrame({
+            'Balance Date': ['2026-01-01', '2026-01-01', '2026-01-02'],
+            'Account Id': ['A1', 'A2', 'A1'],
+            'Species Group Id': [141, 141, 141]
+        })
+
+        has_dups, count, info = detect_balance_duplicates(df)
+
+        assert has_dups is False
+        assert count == 0
+
+    def test_detects_duplicates(self):
+        """Should detect duplicate rows based on key columns."""
+        from app.views.upload import detect_balance_duplicates
+
+        df = pd.DataFrame({
+            'Balance Date': ['2026-01-01', '2026-01-01', '2026-01-01'],
+            'Account Id': ['A1', 'A1', 'A2'],  # First two are duplicates
+            'Species Group Id': [141, 141, 141]
+        })
+
+        has_dups, count, info = detect_balance_duplicates(df)
+
+        assert has_dups is True
+        assert count == 1
+        assert 'A1' in info
+
+    def test_missing_columns_returns_false(self):
+        """Should return False if key columns missing."""
+        from app.views.upload import detect_balance_duplicates
+
+        df = pd.DataFrame({
+            'Balance Date': ['2026-01-01'],
+            'Account Id': ['A1']
+            # Missing Species Group Id
+        })
+
+        has_dups, count, info = detect_balance_duplicates(df)
+
+        assert has_dups is False
+
+    def test_multiple_duplicate_groups(self):
+        """Should count duplicates across multiple groups."""
+        from app.views.upload import detect_balance_duplicates
+
+        df = pd.DataFrame({
+            'Balance Date': ['2026-01-01', '2026-01-01', '2026-01-01', '2026-01-01'],
+            'Account Id': ['A1', 'A1', 'A2', 'A2'],  # Two pairs of duplicates
+            'Species Group Id': [141, 141, 136, 136]
+        })
+
+        has_dups, count, info = detect_balance_duplicates(df)
+
+        assert has_dups is True
+        assert count == 2
+
+
+class TestDetectDetailDuplicates:
+    """Tests for detect_detail_duplicates function."""
+
+    def test_no_duplicates_returns_false(self):
+        """Should return False when no duplicates exist."""
+        from app.views.upload import detect_detail_duplicates
+
+        df = pd.DataFrame({
+            'Report Number': ['RPT001', 'RPT002', 'RPT003']
+        })
+
+        has_dups, count, info = detect_detail_duplicates(df)
+
+        assert has_dups is False
+        assert count == 0
+
+    def test_detects_duplicate_report_numbers(self):
+        """Should detect duplicate report numbers."""
+        from app.views.upload import detect_detail_duplicates
+
+        df = pd.DataFrame({
+            'Report Number': ['RPT001', 'RPT001', 'RPT002']
+        })
+
+        has_dups, count, info = detect_detail_duplicates(df)
+
+        assert has_dups is True
+        assert count == 1
+        assert 'RPT001' in info
+
+    def test_ignores_null_report_numbers(self):
+        """Should not count null report numbers as duplicates."""
+        from app.views.upload import detect_detail_duplicates
+
+        df = pd.DataFrame({
+            'Report Number': [None, None, 'RPT001']
+        })
+
+        has_dups, count, info = detect_detail_duplicates(df)
+
+        assert has_dups is False
+
+    def test_missing_column_returns_false(self):
+        """Should return False if Report Number column missing."""
+        from app.views.upload import detect_detail_duplicates
+
+        df = pd.DataFrame({
+            'Other Column': ['A', 'B', 'C']
+        })
+
+        has_dups, count, info = detect_detail_duplicates(df)
+
+        assert has_dups is False
+
+    def test_shows_example_duplicates_in_info(self):
+        """Should show examples of duplicate report numbers."""
+        from app.views.upload import detect_detail_duplicates
+
+        df = pd.DataFrame({
+            'Report Number': ['RPT001', 'RPT001', 'RPT002', 'RPT002', 'RPT003']
+        })
+
+        has_dups, count, info = detect_detail_duplicates(df)
+
+        assert has_dups is True
+        assert 'RPT001' in info or 'RPT002' in info
+
+
 class TestUploadEdgeCases:
     """Edge case tests for upload functionality."""
 
