@@ -87,16 +87,20 @@ def add_risk_flags(df):
 
 def format_lbs(value):
     """Format pounds as M or K with 1 decimal"""
-    if value >= 1_000_000:
-        return f"{value / 1_000_000:.1f}M"
-    elif value >= 1_000:
-        return f"{value / 1_000:.1f}K"
+    abs_value = abs(value)
+    sign = "-" if value < 0 else ""
+    if abs_value >= 1_000_000:
+        return f"{sign}{abs_value / 1_000_000:.1f}M"
+    elif abs_value >= 1_000:
+        return f"{sign}{abs_value / 1_000:.1f}K"
     else:
         return f"{value:.0f}"
 
 
 def get_pct_color(pct):
     """Return color based on percent remaining"""
+    if pct is None:
+        return "#94a3b8"  # gray for N/A
     if pct < 10:
         return "#dc2626"  # red
     elif pct < 50:
@@ -123,10 +127,11 @@ def kpi_card(label, value, subtitle=None):
 def species_kpi_card(label, pct, remaining, allocated):
     """Generate HTML for a species KPI card"""
     color = get_pct_color(pct)
+    pct_display = "N/A" if pct is None else f"{pct:.0f}%"
     return f"""
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center;">
         <div style="color: #64748b; font-size: 16px; margin-bottom: 4px;">{label}</div>
-        <div style="font-size: 32px; font-weight: bold; color: {color};">{pct:.0f}%</div>
+        <div style="font-size: 32px; font-weight: bold; color: {color};">{pct_display}</div>
         <div style="color: #64748b; font-size: 13px; margin-top: 6px;"><strong style="color: #475569;">{format_lbs(remaining)}</strong> of {format_lbs(allocated)} lbs</div>
     </div>
     """
