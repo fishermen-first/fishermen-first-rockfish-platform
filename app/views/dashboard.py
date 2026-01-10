@@ -7,17 +7,32 @@ from app.config import supabase
 SPECIES_MAP = {141: 'POP', 136: 'NR', 172: 'Dusky'}
 
 
+@st.cache_data(ttl=60)
+def _fetch_quota_remaining(year: int):
+    """Cached: Fetch raw quota_remaining data from database."""
+    response = supabase.table("quota_remaining").select("*").eq("year", year).execute()
+    return response.data if response.data else []
+
+
+@st.cache_data(ttl=300)
+def _fetch_coop_members():
+    """Cached: Fetch coop_members reference data (rarely changes)."""
+    response = supabase.table("coop_members").select("llp, vessel_name, coop_code").execute()
+    return response.data if response.data else []
+
+
 def get_quota_data():
     """Fetch quota_remaining joined with coop_members for vessel info"""
-    response = supabase.table("quota_remaining").select("*").eq("year", 2026).execute()
-    if not response.data:
+    # Use cached data fetchers
+    quota_data = _fetch_quota_remaining(2026)
+    if not quota_data:
         return pd.DataFrame()
 
-    df = pd.DataFrame(response.data)
+    df = pd.DataFrame(quota_data)
 
-    # Get vessel info
-    members = supabase.table("coop_members").select("llp, vessel_name, coop_code").execute()
-    members_df = pd.DataFrame(members.data)
+    # Get vessel info (cached for 5 min)
+    members_data = _fetch_coop_members()
+    members_df = pd.DataFrame(members_data) if members_data else pd.DataFrame()
 
     # Join
     df = df.merge(members_df, on="llp", how="left")

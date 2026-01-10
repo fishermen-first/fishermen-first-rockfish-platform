@@ -16,6 +16,36 @@ SPECIES_OPTIONS = {
 CURRENT_YEAR = 2026
 
 
+@st.cache_data(ttl=300)
+def _fetch_coop_members_for_dropdown():
+    """Cached: Fetch coop_members for LLP dropdown (rarely changes)."""
+    response = supabase.table("coop_members").select("llp, vessel_name").order("llp").execute()
+    return response.data if response.data else []
+
+
+@st.cache_data(ttl=30)
+def _fetch_transfer_history(year: int):
+    """Cached: Fetch transfer history (short TTL for near-realtime)."""
+    response = supabase.table("quota_transfers").select(
+        "id, from_llp, to_llp, species_code, pounds, transfer_date, notes, created_at"
+    ).eq("year", year).eq("is_deleted", False).order("created_at", desc=True).execute()
+    return response.data if response.data else []
+
+
+@st.cache_data(ttl=300)
+def _fetch_llp_to_vessel_map():
+    """Cached: Fetch LLP to vessel name mapping."""
+    response = supabase.table("coop_members").select("llp, vessel_name").execute()
+    if response.data:
+        return {m["llp"]: m["vessel_name"] for m in response.data}
+    return {}
+
+
+def clear_transfer_cache():
+    """Clear transfer-related caches after successful transfer."""
+    _fetch_transfer_history.clear()
+
+
 def get_llp_options() -> list[tuple[str, str]]:
     """
     Fetch all LLPs with vessel names for dropdown display.
@@ -24,14 +54,12 @@ def get_llp_options() -> list[tuple[str, str]]:
         List of tuples: (llp, "LLP - Vessel Name")
     """
     try:
-        response = supabase.table("coop_members").select(
-            "llp, vessel_name"
-        ).order("llp").execute()
-
-        if response.data:
+        # Use cached data
+        data = _fetch_coop_members_for_dropdown()
+        if data:
             return [
                 (row["llp"], f"{row['llp']} - {row.get('vessel_name') or 'Unknown'}")
-                for row in response.data
+                for row in data
             ]
         return []
     except Exception as e:
@@ -72,19 +100,16 @@ def get_transfer_history(year: int = CURRENT_YEAR) -> pd.DataFrame:
         DataFrame with transfer records joined with vessel names
     """
     try:
-        response = supabase.table("quota_transfers").select(
-            "id, from_llp, to_llp, species_code, pounds, transfer_date, notes, created_at"
-        ).eq("year", year).eq("is_deleted", False).order("created_at", desc=True).execute()
-
-        if not response.data:
+        # Use cached data
+        data = _fetch_transfer_history(year)
+        if not data:
             return pd.DataFrame()
 
-        df = pd.DataFrame(response.data)
+        df = pd.DataFrame(data)
 
-        # Get vessel names for display
-        members = supabase.table("coop_members").select("llp, vessel_name").execute()
-        if members.data:
-            llp_to_vessel = {m["llp"]: m["vessel_name"] for m in members.data}
+        # Get vessel names for display (cached)
+        llp_to_vessel = _fetch_llp_to_vessel_map()
+        if llp_to_vessel:
             df["from_vessel"] = df["from_llp"].map(llp_to_vessel)
             df["to_vessel"] = df["to_llp"].map(llp_to_vessel)
 
@@ -273,6 +298,7 @@ def show():
                     f"{SPECIES_OPTIONS[species_code].split(' ')[0]} "
                     f"from {from_llp} to {to_llp}"
                 )
+                clear_transfer_cache()  # Clear cache so history refreshes
                 st.rerun()  # Refresh to show updated history
             else:
                 st.error(f"Transfer failed: {error}")

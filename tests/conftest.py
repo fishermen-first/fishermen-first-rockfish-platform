@@ -10,6 +10,34 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
+@pytest.fixture(autouse=True)
+def clear_streamlit_caches():
+    """Clear all Streamlit caches before each test to prevent data leakage."""
+    # Import cached functions
+    from app.views.dashboard import _fetch_quota_remaining, _fetch_coop_members
+    from app.views.transfers import (
+        _fetch_coop_members_for_dropdown,
+        _fetch_transfer_history,
+        _fetch_llp_to_vessel_map
+    )
+
+    # Clear all caches before test
+    _fetch_quota_remaining.clear()
+    _fetch_coop_members.clear()
+    _fetch_coop_members_for_dropdown.clear()
+    _fetch_transfer_history.clear()
+    _fetch_llp_to_vessel_map.clear()
+
+    yield
+
+    # Clear again after test for good measure
+    _fetch_quota_remaining.clear()
+    _fetch_coop_members.clear()
+    _fetch_coop_members_for_dropdown.clear()
+    _fetch_transfer_history.clear()
+    _fetch_llp_to_vessel_map.clear()
+
+
 @pytest.fixture
 def mock_supabase(mocker):
     """Mock the Supabase client where it's used in transfers module."""
