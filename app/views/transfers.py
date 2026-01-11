@@ -199,42 +199,60 @@ def show():
     # --- NEW TRANSFER FORM ---
     st.subheader("New Transfer")
 
+    # Selectboxes OUTSIDE form so changes trigger immediate updates
+    col1, col2 = st.columns(2)
+
+    with col1:
+        from_llp_display = st.selectbox(
+            "From LLP (Source)",
+            options=display_options,
+            key="from_llp_select"
+        )
+
+    with col2:
+        to_llp_display = st.selectbox(
+            "To LLP (Destination)",
+            options=display_options,
+            key="to_llp_select"
+        )
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        species_display_selected = st.selectbox(
+            "Species",
+            options=species_options,
+            key="species_select"
+        )
+
+    with col4:
+        pounds = st.number_input(
+            "Pounds",
+            min_value=1.0,
+            max_value=10000000.0,
+            value=1000.0,
+            step=100.0,
+            key="pounds_input"
+        )
+
+    # Show available quota for BOTH vessels (updates immediately on selection change)
+    if from_llp_display and to_llp_display and species_display_selected:
+        from_llp = llp_display[from_llp_display]
+        to_llp = llp_display[to_llp_display]
+        species_code = species_display[species_display_selected]
+        species_short = SPECIES_OPTIONS[species_code].split(" ")[0]
+
+        from_available = get_quota_remaining(from_llp, species_code)
+        to_available = get_quota_remaining(to_llp, species_code)
+
+        col_from, col_to = st.columns(2)
+        with col_from:
+            st.info(f"**{from_llp}** has **{from_available:,.0f} lbs** {species_short}")
+        with col_to:
+            st.info(f"**{to_llp}** has **{to_available:,.0f} lbs** {species_short}")
+
+    # Form for notes and submit only
     with st.form("transfer_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-
-        with col1:
-            from_llp_display = st.selectbox(
-                "From LLP (Source)",
-                options=display_options,
-                key="from_llp_select"
-            )
-
-        with col2:
-            to_llp_display = st.selectbox(
-                "To LLP (Destination)",
-                options=display_options,
-                key="to_llp_select"
-            )
-
-        col3, col4 = st.columns(2)
-
-        with col3:
-            species_display_selected = st.selectbox(
-                "Species",
-                options=species_options,
-                key="species_select"
-            )
-
-        with col4:
-            pounds = st.number_input(
-                "Pounds",
-                min_value=1.0,
-                max_value=10000000.0,
-                value=1000.0,
-                step=100.0,
-                key="pounds_input"
-            )
-
         notes = st.text_area(
             "Notes (optional)",
             max_chars=500,
@@ -242,15 +260,6 @@ def show():
         )
 
         submitted = st.form_submit_button("Submit Transfer", use_container_width=True)
-
-    # Show available quota outside form (updates on rerun)
-    if from_llp_display and species_display_selected:
-        from_llp = llp_display[from_llp_display]
-        species_code = species_display[species_display_selected]
-        available = get_quota_remaining(from_llp, species_code)
-
-        species_short = SPECIES_OPTIONS[species_code].split(" ")[0]
-        st.info(f"Available {species_short} quota for {from_llp}: **{available:,.0f} lbs**")
 
     # Handle form submission
     if submitted:
