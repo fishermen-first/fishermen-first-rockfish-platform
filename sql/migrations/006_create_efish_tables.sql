@@ -10,8 +10,8 @@
 CREATE TABLE IF NOT EXISTS efish_account_balance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES organizations(id),
-    llp TEXT REFERENCES coop_members(llp),
-    species_code INTEGER REFERENCES species(code),
+    llp TEXT,
+    species_code INTEGER,
     year INTEGER NOT NULL,
 
     -- eFish balance fields
@@ -42,14 +42,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_efish_balance_unique
 CREATE TABLE IF NOT EXISTS efish_account_detail (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES organizations(id),
-    llp TEXT REFERENCES coop_members(llp),
-    species_code INTEGER REFERENCES species(code),
+    llp TEXT,
+    species_code INTEGER,
     year INTEGER NOT NULL,
 
     -- eFish detail fields
     report_number TEXT,
     landing_date DATE,
-    processor_code TEXT REFERENCES processors(processor_code),
+    processor_code TEXT,
     pounds NUMERIC,
 
     -- Import metadata
