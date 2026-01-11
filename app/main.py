@@ -88,6 +88,11 @@ def show_sidebar():
                 "processor_view": "Processor View",
             }
             default_page = "processor_view"
+        elif role == "vessel_owner":
+            nav_options = {
+                "vessel_owner_view": "My Vessel",
+            }
+            default_page = "vessel_owner_view"
         else:
             nav_options = {}
             default_page = None
@@ -135,6 +140,9 @@ def show_current_page():
     elif page == "processor_view":
         from app.views import processor_view
         processor_view.show()
+    elif page == "vessel_owner_view":
+        from app.views import vessel_owner_view
+        vessel_owner_view.show()
     elif page is None:
         st.warning("No pages available for your role.")
     else:

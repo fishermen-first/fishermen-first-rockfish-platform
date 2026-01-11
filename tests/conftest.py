@@ -20,6 +20,14 @@ def clear_streamlit_caches():
         _fetch_transfer_history,
         _fetch_llp_to_vessel_map
     )
+    from app.views.vessel_owner_view import (
+        _fetch_vessel_info,
+        _fetch_my_quota,
+        _fetch_my_transfers,
+        _fetch_my_harvests,
+        _fetch_llp_vessel_map,
+        _fetch_processor_map
+    )
 
     # Clear all caches before test
     _fetch_quota_remaining.clear()
@@ -27,6 +35,12 @@ def clear_streamlit_caches():
     _fetch_coop_members_for_dropdown.clear()
     _fetch_transfer_history.clear()
     _fetch_llp_to_vessel_map.clear()
+    _fetch_vessel_info.clear()
+    _fetch_my_quota.clear()
+    _fetch_my_transfers.clear()
+    _fetch_my_harvests.clear()
+    _fetch_llp_vessel_map.clear()
+    _fetch_processor_map.clear()
 
     yield
 
@@ -36,6 +50,12 @@ def clear_streamlit_caches():
     _fetch_coop_members_for_dropdown.clear()
     _fetch_transfer_history.clear()
     _fetch_llp_to_vessel_map.clear()
+    _fetch_vessel_info.clear()
+    _fetch_my_quota.clear()
+    _fetch_my_transfers.clear()
+    _fetch_my_harvests.clear()
+    _fetch_llp_vessel_map.clear()
+    _fetch_processor_map.clear()
 
 
 @pytest.fixture
