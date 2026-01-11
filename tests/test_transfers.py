@@ -129,7 +129,8 @@ class TestInsertTransfer:
             species_code=141,
             pounds=1000.0,
             notes='Test transfer',
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         assert success is True
@@ -150,7 +151,8 @@ class TestInsertTransfer:
             species_code=141,
             pounds=1000.0,
             notes='Test note',
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         # Verify the insert was called with correct data
@@ -180,7 +182,8 @@ class TestInsertTransfer:
             species_code=141,
             pounds=1000.0,
             notes='',
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         call_args = mock_supabase.table.return_value.insert.call_args[0][0]
@@ -198,7 +201,8 @@ class TestInsertTransfer:
             species_code=141,
             pounds=1000.0,
             notes=None,
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         assert success is False
@@ -219,7 +223,8 @@ class TestInsertTransfer:
             species_code=141,
             pounds=1000.0,
             notes=None,
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         assert success is False
@@ -442,7 +447,8 @@ class TestTransferEdgeCases:
             species_code=141,
             pounds=1000.0,
             notes=long_notes,
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         # Should still insert (DB will handle truncation or app should validate)
@@ -464,7 +470,8 @@ class TestTransferEdgeCases:
             species_code=141,
             pounds=1000.0,
             notes='   ',  # Whitespace only
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         call_args = mock_supabase.table.return_value.insert.call_args[0][0]
@@ -484,7 +491,8 @@ class TestTransferEdgeCases:
             species_code=141,
             pounds=1000.0,
             notes='  Actual note content  ',
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         call_args = mock_supabase.table.return_value.insert.call_args[0][0]
@@ -519,7 +527,8 @@ class TestTransferEdgeCases:
             species_code=invalid_species,
             pounds=1000.0,
             notes=None,
-            user_id='user-123'
+            user_id='user-123',
+            org_id='test-org-id'
         )
 
         # Documents that DB insert will proceed (validation is UI responsibility)

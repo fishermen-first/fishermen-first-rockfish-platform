@@ -129,7 +129,8 @@ def insert_transfer(
     species_code: int,
     pounds: float,
     notes: str | None,
-    user_id: str
+    user_id: str,
+    org_id: str
 ) -> tuple[bool, int, str | None]:
     """
     Insert a new quota transfer record.
@@ -141,6 +142,7 @@ def insert_transfer(
         pounds: Amount to transfer
         notes: Optional notes
         user_id: ID of user creating the transfer
+        org_id: Organization ID for multi-tenant isolation
 
     Returns:
         Tuple of (success: bool, count: int, error: str | None)
@@ -151,6 +153,7 @@ def insert_transfer(
         clean_notes = clean_notes if clean_notes else None
 
         record = {
+            "org_id": org_id,
             "from_llp": from_llp,
             "to_llp": to_llp,
             "species_code": species_code,
@@ -289,8 +292,13 @@ def show():
             for error in errors:
                 st.error(error)
         else:
-            # Get user ID for audit trail
+            # Get user ID and org_id for audit trail and RLS
             user_id = st.session_state.user.id if st.session_state.user else "unknown"
+            org_id = st.session_state.get("org_id")
+
+            if not org_id:
+                st.error("Organization not set. Please log out and log back in.")
+                return
 
             success, count, error = insert_transfer(
                 from_llp=from_llp,
@@ -298,7 +306,8 @@ def show():
                 species_code=species_code,
                 pounds=pounds,
                 notes=notes,
-                user_id=user_id
+                user_id=user_id,
+                org_id=org_id
             )
 
             if success:

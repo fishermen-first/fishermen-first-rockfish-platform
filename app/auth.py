@@ -12,6 +12,8 @@ def init_session_state():
         st.session_state.user_role = None
     if "processor_code" not in st.session_state:
         st.session_state.processor_code = None
+    if "org_id" not in st.session_state:
+        st.session_state.org_id = None
     if "access_token" not in st.session_state:
         st.session_state.access_token = None
     if "refresh_token" not in st.session_state:
@@ -37,10 +39,11 @@ def login(email: str, password: str) -> tuple[bool, str]:
             st.session_state.access_token = response.session.access_token
             st.session_state.refresh_token = response.session.refresh_token
 
-            # Fetch user role and processor_code from user_profiles table
+            # Fetch user role, processor_code, and org_id from user_profiles table
             profile = get_user_profile(response.user.id)
-            st.session_state.user_role = profile["role"]
-            st.session_state.processor_code = profile["processor_code"]
+            st.session_state.user_role = profile.get("role")
+            st.session_state.processor_code = profile.get("processor_code")
+            st.session_state.org_id = profile.get("org_id")
 
             return True, "Login successful"
         else:
@@ -64,6 +67,7 @@ def logout():
     st.session_state.user = None
     st.session_state.user_role = None
     st.session_state.processor_code = None
+    st.session_state.org_id = None
     st.session_state.access_token = None
     st.session_state.refresh_token = None
 
@@ -137,15 +141,15 @@ def get_user_profile(user_id: str) -> dict:
         user_id: The user's UUID from Supabase Auth
 
     Returns:
-        Dict with 'role' and 'processor_code' keys
+        Dict with 'role', 'processor_code', and 'org_id' keys
     """
     try:
-        response = supabase.table("user_profiles").select("role, processor_code").eq("user_id", user_id).execute()
+        response = supabase.table("user_profiles").select("role, processor_code, org_id").eq("user_id", user_id).execute()
         if response.data:
             return response.data[0]
-        return {"role": None, "processor_code": None}
+        return {"role": None, "processor_code": None, "org_id": None}
     except Exception:
-        return {"role": None, "processor_code": None}
+        return {"role": None, "processor_code": None, "org_id": None}
 
 
 def get_current_user():
