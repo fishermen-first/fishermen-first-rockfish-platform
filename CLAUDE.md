@@ -66,5 +66,34 @@ app/
 ## Local Dev
 streamlit run app/main.py
 
+## Verification (IMPORTANT)
+After making any code changes, ALWAYS run verification:
+
+```bash
+# Quick: run unit tests
+pytest tests/ -v --tb=short
+
+# Full: run verification script
+python scripts/verify.py
+```
+
 ## Tests
+
+### Unit Tests
 pytest tests/ -v
+
+### End-to-End Tests (Playwright)
+```bash
+# Install (one time)
+pip install playwright pytest-playwright
+playwright install chromium
+
+# Run e2e tests (headless)
+pytest tests/e2e/ -v
+
+# Run e2e tests (see browser)
+pytest tests/e2e/ --headed
+
+# With test credentials
+TEST_PASSWORD=xxx pytest tests/e2e/ -v
+```
