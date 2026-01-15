@@ -174,39 +174,10 @@ def show():
 
 def render_dashboard():
     """Main dashboard layout with filters and KPI cards."""
-    # Custom CSS for dashboard styling
-    st.markdown("""
-    <style>
-        /* Light background for main area */
-        .stMainBlockContainer {
-            background-color: #f8fafc;
-        }
-        [data-testid="stMetric"] {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        [data-testid="stMetric"] label {
-            color: #64748b;
-        }
-        /* Style dataframe header */
-        .stDataFrame thead tr th {
-            background-color: #1e3a5f !important;
-            color: white !important;
-            font-weight: 600 !important;
-            font-size: 1rem !important;
-            padding: 0.75rem 0.5rem !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    from app.utils.styles import page_header, section_header
 
     # Header
-    st.markdown(f"""
-    <h1 style='margin: 0; font-size: 2rem;'>Dashboard</h1>
-    <p style='color: #64748b; margin: 0 0 1.5rem 0;'>Season 2026 • Last updated: {pd.Timestamp.now().strftime('%B %d, %Y')}</p>
-    """, unsafe_allow_html=True)
+    page_header("Dashboard", f"Season 2026 • Last updated: {pd.Timestamp.now().strftime('%B %d, %Y')}")
 
     # Get and process data
     raw_df = get_quota_data()
@@ -255,7 +226,7 @@ def render_dashboard():
     total_dusky_pct = (total_dusky_remaining / total_dusky_allocated * 100) if total_dusky_allocated > 0 else 0
 
     # Section label for KPIs
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;'>📊 OVERVIEW</p>", unsafe_allow_html=True)
+    section_header("OVERVIEW", "📊")
 
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
@@ -282,7 +253,7 @@ def render_dashboard():
     st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
 
     # --- VESSELS NEEDING ATTENTION ---
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;'>⚠️ VESSELS NEEDING ATTENTION</p>", unsafe_allow_html=True)
+    section_header("VESSELS NEEDING ATTENTION", "⚠️")
 
     # Get vessels at risk (any species <10%)
     at_risk_df = filtered_df[filtered_df["vessel_at_risk"] == True].copy()
@@ -331,7 +302,7 @@ def render_dashboard():
     st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
 
     # --- MAIN DATA TABLE ---
-    st.markdown("<p style='color: #64748b; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;'>📋 QUOTA REMAINING BY VESSEL</p>", unsafe_allow_html=True)
+    section_header("QUOTA REMAINING BY VESSEL", "📋")
 
     # Prepare display dataframe
     display_df = filtered_df.copy()

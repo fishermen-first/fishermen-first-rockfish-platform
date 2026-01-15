@@ -6,8 +6,8 @@ from app.config import supabase
 
 
 def show():
-    st.header("Account Detail")
-    st.caption("Catch activity records by vessel")
+    from app.utils.styles import page_header
+    page_header("Account Detail", "Catch activity records by vessel")
 
     # Fetch data from account_detail view
     response = supabase.table("account_detail").select("*").execute()

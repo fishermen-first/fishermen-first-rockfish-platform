@@ -177,12 +177,13 @@ def insert_transfer(
 
 def show():
     """Display the quota transfers page."""
+    from app.utils.styles import page_header, section_header
+
     # Role check - only admin and manager can access
     if not require_role("manager"):
         return
 
-    st.header("Quota Transfers")
-    st.caption(f"Transfer quota between LLPs | Season: {CURRENT_YEAR}")
+    page_header("Quota Transfers", f"Transfer quota between LLPs | Season: {CURRENT_YEAR}")
 
     # Get LLP options once for both dropdowns
     llp_options = get_llp_options()
@@ -200,7 +201,7 @@ def show():
     species_options = list(species_display.keys())
 
     # --- NEW TRANSFER FORM ---
-    st.subheader("New Transfer")
+    section_header("NEW TRANSFER", "➕")
 
     # Selectboxes OUTSIDE form so changes trigger immediate updates
     col1, col2 = st.columns(2)
@@ -324,7 +325,7 @@ def show():
     st.divider()
 
     # --- TRANSFER HISTORY ---
-    st.subheader("Transfer History")
+    section_header("TRANSFER HISTORY", "📜")
 
     history_df = get_transfer_history()
 

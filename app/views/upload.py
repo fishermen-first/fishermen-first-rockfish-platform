@@ -227,10 +227,11 @@ def import_account_detail(df, filename):
 
 def show():
     """Display the upload page with two upload sections."""
-    st.header("Upload")
+    from app.utils.styles import page_header, section_header
+    page_header("Upload", "eFish data imports for reconciliation")
 
     # Section 1: Account Balance
-    st.subheader("Account Balance")
+    section_header("ACCOUNT BALANCE", "📊")
     st.caption("Upload coopaccountbalance.csv - Summary snapshot by species")
 
     balance_file = st.file_uploader("Choose CSV file", type=['csv'], key="balance_upload")
@@ -268,7 +269,7 @@ def show():
     st.divider()
 
     # Section 2: Catch Detail
-    st.subheader("Catch Detail")
+    section_header("CATCH DETAIL", "📋")
     st.caption("Upload coopaccountdetail.xlsx - Individual harvest records")
 
     detail_file = st.file_uploader("Choose Excel file", type=['xlsx'], key="detail_upload")

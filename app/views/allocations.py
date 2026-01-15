@@ -13,7 +13,8 @@ PSC_SPECIES_NAMES = {110: "Pacific Cod", 143: "Thornyhead", 200: "Halibut", 710:
 
 def show():
     """Display the allocations page with tabs."""
-    st.title("Allocations")
+    from app.utils.styles import page_header
+    page_header("Allocations", "TAC and vessel quota allocations for Season 2026")
 
     tab1, tab2, tab3 = st.tabs(["Total Allocation", "Vessel Allocations", "PSC Allocations"])
 

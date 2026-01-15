@@ -6,8 +6,8 @@ from app.config import supabase
 
 
 def show():
-    st.header("Account Balances")
-    st.caption("Latest balance data by co-op and species")
+    from app.utils.styles import page_header
+    page_header("Account Balances", "Latest balance data by co-op and species")
 
     # Fetch data from account_balances view
     response = supabase.table("account_balances").select("*").execute()

@@ -7,7 +7,8 @@ from app.config import supabase
 
 def show():
     """Display the rosters page with 5 tabs."""
-    st.title("Rosters")
+    from app.utils.styles import page_header
+    page_header("Rosters", "Cooperatives, members, vessels, and reference data")
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Cooperatives", "Members", "Vessels", "Processors", "Species"])
 

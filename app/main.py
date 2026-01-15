@@ -274,6 +274,10 @@ def show_sidebar():
 
 def show_current_page():
     """Render the currently selected page."""
+    # Apply global styling for all authenticated pages
+    from app.utils.styles import apply_page_styling
+    apply_page_styling()
+
     page = st.session_state.get("current_page", "dashboard")
 
     if page == "dashboard":

@@ -162,11 +162,11 @@ def show():
     coop_code = vessel_info.get("coop_code", "Unknown")
 
     # Header
-    st.title(f"My Vessel: {vessel_name}")
-    st.caption(f"LLP: {llp} | Co-Op: {coop_code} | Season: {CURRENT_YEAR}")
+    from app.utils.styles import page_header, section_header
+    page_header(f"My Vessel: {vessel_name}", f"LLP: {llp} | Co-Op: {coop_code} | Season: {CURRENT_YEAR}")
 
     # --- QUOTA REMAINING ---
-    st.subheader("Quota Remaining")
+    section_header("QUOTA REMAINING", "📊")
 
     quota_data = _fetch_my_quota(llp, CURRENT_YEAR)
 
@@ -190,7 +190,7 @@ def show():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- TRANSFER HISTORY ---
-    st.subheader("Transfer History")
+    section_header("TRANSFER HISTORY", "🔄")
 
     transfers = _fetch_my_transfers(llp, CURRENT_YEAR)
 
@@ -234,7 +234,7 @@ def show():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- HARVEST RECORDS ---
-    st.subheader("Harvest Records")
+    section_header("HARVEST RECORDS", "🐟")
 
     harvests = _fetch_my_harvests(llp, CURRENT_YEAR)
 
