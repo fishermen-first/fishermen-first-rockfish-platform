@@ -31,23 +31,76 @@ def main():
 
 def show_login():
     """Display the login form."""
-    st.title("Fishermen First Analytics")
-    st.subheader("Login")
+    st.markdown("""
+    <style>
+        #MainMenu, footer, header {visibility: hidden;}
+        .stApp {
+            background-color: #f0f4f8;
+        }
+        [data-testid="stMainBlockContainer"] {
+            max-width: 480px;
+            margin: 0 auto;
+            padding-top: 12vh;
+        }
+        /* Style the form container */
+        [data-testid="stForm"] {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: none;
+        }
+        /* More space between form fields */
+        [data-testid="stForm"] .stTextInput {
+            margin-bottom: 1rem;
+        }
+        .stFormSubmitButton > button {
+            background-color: #1e3a5f !important;
+            color: white !important;
+            border-radius: 8px !important;
+            padding: 0.6rem 1rem !important;
+            font-weight: 500 !important;
+            margin-top: 0.5rem;
+        }
+        .stFormSubmitButton > button:hover {
+            background-color: #2c4a6e !important;
+        }
+        /* Clean up input styling */
+        .stTextInput > div > div > input {
+            border-radius: 8px;
+            padding: 0.75rem 1rem !important;
+            font-size: 1rem !important;
+            width: 100% !important;
+        }
+        /* Hide "Press Enter to submit" helper text */
+        .stTextInput div[data-testid="InputInstructions"] {
+            display: none;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Branding header
+    st.markdown("""
+    <div style='text-align: center; margin-bottom: 2rem;'>
+        <div style='font-size: 3rem; margin-bottom: 0.25rem;'>🐟</div>
+        <div style='font-size: 1.75rem; font-weight: 600; color: #1e3a5f; margin-bottom: 0.25rem;'>Fishermen First</div>
+        <div style='font-size: 1rem; color: #64748b;'>Rockfish Quota Management</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.form("login_form"):
         email = st.text_input("Email", placeholder="you@example.com")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Log In", use_container_width=True)
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        submitted = st.form_submit_button("Sign In", use_container_width=True)
 
         if submitted:
             if not email or not password:
                 st.error("Please enter both email and password.")
             else:
-                with st.spinner("Logging in..."):
+                with st.spinner("Signing in..."):
                     success, message = login(email, password)
 
                 if success:
-                    st.success(message)
                     st.rerun()
                 else:
                     st.error(message)
@@ -59,38 +112,59 @@ def show_sidebar():
     role = st.session_state.get("user_role")
 
     with st.sidebar:
-        st.title("Fishermen First")
+        # Sidebar styling
+        st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {
+                background-color: #1e3a5f;
+            }
+            [data-testid="stSidebar"] * {
+                color: white !important;
+            }
+            [data-testid="stSidebar"] button {
+                background-color: rgba(255,255,255,0.1) !important;
+                border: 1px solid rgba(255,255,255,0.2) !important;
+            }
+            [data-testid="stSidebar"] button:hover {
+                background-color: rgba(255,255,255,0.2) !important;
+                border: 1px solid rgba(255,255,255,0.3) !important;
+            }
+            [data-testid="stSidebar"] button[kind="primary"] {
+                background-color: rgba(255,255,255,0.25) !important;
+                border: 1px solid rgba(255,255,255,0.4) !important;
+            }
+            [data-testid="stSidebar"] hr {
+                border-color: rgba(255,255,255,0.2) !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Branding
+        st.markdown("<div style='text-align: center; padding: 0.5rem 0;'><span style='font-size: 2rem;'>🐟</span></div>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin: 0; font-size: 1.4rem;'>Fishermen First</h2>", unsafe_allow_html=True)
+
         st.divider()
 
-        st.caption(f"Logged in as: **{user.email}**")
-        st.caption(f"Role: **{role}**")
-
-        if st.button("Log Out", use_container_width=True):
-            logout()
-            st.rerun()
-
-        st.divider()
-
-        # Role-based navigation
+        # Role-based navigation with icons
         if role in ["admin", "manager"]:
             nav_options = {
-                "dashboard": "Dashboard",
-                "account_balances": "Account Balances",
-                "account_detail": "Account Detail",
-                "transfers": "Transfers",
-                "allocations": "Allocations",
-                "rosters": "Rosters",
-                "upload": "Upload",
+                "dashboard": "📊  Dashboard",
+                "account_balances": "💰  Account Balances",
+                "account_detail": "📋  Account Detail",
+                "transfers": "🔄  Transfers",
+                "allocations": "📈  Allocations",
+                "rosters": "👥  Rosters",
+                "upload": "📤  Upload",
             }
             default_page = "dashboard"
         elif role == "processor":
             nav_options = {
-                "processor_view": "Processor View",
+                "processor_view": "🏭  Processor View",
             }
             default_page = "processor_view"
         elif role == "vessel_owner":
             nav_options = {
-                "vessel_owner_view": "My Vessel",
+                "vessel_owner_view": "🚢  My Vessel",
             }
             default_page = "vessel_owner_view"
         else:
@@ -110,6 +184,19 @@ def show_sidebar():
             ):
                 st.session_state.current_page = page_key
                 st.rerun()
+
+        # Spacer to push user info to bottom
+        st.markdown("<div style='flex-grow: 1; min-height: 2rem;'></div>", unsafe_allow_html=True)
+
+        st.divider()
+
+        # User info and logout at bottom
+        st.caption(f"👤 {user.email}")
+        st.caption(f"Role: {role}")
+
+        if st.button("🚪  Log Out", use_container_width=True):
+            logout()
+            st.rerun()
 
 
 def show_current_page():
