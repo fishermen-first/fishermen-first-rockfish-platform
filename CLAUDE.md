@@ -1,5 +1,16 @@
 # Fishermen First - Rockfish Platform
 
+## Current Focus
+- UI/UX improvements to dashboard and login
+- Sidebar filters for Co-Op and Vessel (with cascading options)
+- Processor view still needs implementation
+
+## Recent Changes (Jan 2026)
+- Modernized login page (centered card, navy branding, clean form)
+- Styled sidebar (navy background, white text, icons on nav items)
+- Dashboard improvements (KPI cards, section headers, table styling)
+- Added sidebar filters that cascade (Co-Op filters Vessels)
+
 ## Overview
 Multi-tenant SaaS platform for Alaska commercial fishing cooperatives to track quota allocations and harvests for Central GOA Rockfish Program.
 
