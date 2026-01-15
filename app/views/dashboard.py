@@ -132,31 +132,33 @@ def get_pct_color(pct):
     return "#1e293b"  # default dark
 
 
-def kpi_card(label, value, subtitle=None):
+def kpi_card(label, value, icon=None, subtitle=None):
     """Create a styled KPI card with consistent height"""
+    icon_html = f'<span style="margin-right: 6px;">{icon}</span>' if icon else ''
     if subtitle:
         subtitle_html = f'<div style="color: #64748b; font-size: 13px; margin-top: 6px;"><strong style="color: #475569;">{subtitle}</strong></div>'
     else:
         subtitle_html = '<div style="color: #64748b; font-size: 13px; margin-top: 6px;">&nbsp;</div>'
 
     return f"""
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center;">
-        <div style="color: #64748b; font-size: 16px; margin-bottom: 4px;">{label}</div>
-        <div style="font-size: 32px; font-weight: bold; color: #1e293b;">{value}</div>
+    <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center;">
+        <div style="color: #64748b; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">{icon_html}{label}</div>
+        <div style="font-size: 36px; font-weight: 700; color: #1e293b;">{value}</div>
         {subtitle_html}
     </div>
     """
 
 
-def species_kpi_card(label, pct, remaining, allocated):
+def species_kpi_card(label, pct, remaining, allocated, species_code=None):
     """Generate HTML for a species KPI card"""
     color = get_pct_color(pct)
     pct_display = "N/A" if pct is None else f"{pct:.0f}%"
+
     return f"""
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center;">
-        <div style="color: #64748b; font-size: 16px; margin-bottom: 4px;">{label}</div>
-        <div style="font-size: 32px; font-weight: bold; color: {color};">{pct_display}</div>
-        <div style="color: #64748b; font-size: 13px; margin-top: 6px;"><strong style="color: #475569;">{format_lbs(remaining)}</strong> of {format_lbs(allocated)} lbs</div>
+    <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center;">
+        <div style="color: #64748b; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">{label}</div>
+        <div style="font-size: 36px; font-weight: 700; color: {color};">{pct_display}</div>
+        <div style="color: #64748b; font-size: 14px; margin-top: 8px;"><strong style="color: #475569;">{format_lbs(remaining)}</strong> of {format_lbs(allocated)} lbs</div>
     </div>
     """
 
@@ -172,16 +174,13 @@ def show():
 
 def render_dashboard():
     """Main dashboard layout with filters and KPI cards."""
-    # Handle clear filters action BEFORE widgets render
-    if st.session_state.get("clear_filters_clicked", False):
-        st.session_state.filter_coop = "All"
-        st.session_state.filter_vessel = "All"
-        st.session_state.clear_filters_clicked = False
-        st.rerun()
-
-    # Custom CSS for KPI cards
+    # Custom CSS for dashboard styling
     st.markdown("""
     <style>
+        /* Light background for main area */
+        .stMainBlockContainer {
+            background-color: #f8fafc;
+        }
         [data-testid="stMetric"] {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -192,12 +191,22 @@ def render_dashboard():
         [data-testid="stMetric"] label {
             color: #64748b;
         }
+        /* Style dataframe header */
+        .stDataFrame thead tr th {
+            background-color: #1e3a5f !important;
+            color: white !important;
+            font-weight: 600 !important;
+            font-size: 1rem !important;
+            padding: 0.75rem 0.5rem !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("Dashboard")
-    st.caption("Quota overview across all co-ops")
-    st.caption(f"Season: 2026 | Last updated: {pd.Timestamp.now().strftime('%B %d, %Y')}")
+    # Header
+    st.markdown(f"""
+    <h1 style='margin: 0; font-size: 2rem;'>Dashboard</h1>
+    <p style='color: #64748b; margin: 0 0 1.5rem 0;'>Season 2026 • Last updated: {pd.Timestamp.now().strftime('%B %d, %Y')}</p>
+    """, unsafe_allow_html=True)
 
     # Get and process data
     raw_df = get_quota_data()
@@ -208,26 +217,10 @@ def render_dashboard():
     pivot_df = pivot_quota_data(raw_df)
     pivot_df = add_risk_flags(pivot_df)
 
-    # --- FILTER BAR ---
-    col1, col2, col3 = st.columns([2, 2, 1])
-
-    with col1:
-        coops = ["All"] + sorted(pivot_df["coop_code"].dropna().unique().tolist())
-        selected_coop = st.selectbox("Co-Op", coops, key="filter_coop")
-
-    with col2:
-        vessel_options = ["All"] + sorted(pivot_df["vessel_name"].dropna().unique().tolist())
-        selected_vessel = st.selectbox("Vessel", vessel_options, key="filter_vessel")
-
-    with col3:
-        st.write("")  # Add vertical space
-        st.write("")  # Add more vertical space to align with dropdown
-        if st.button("Clear Filters", use_container_width=True):
-            st.session_state.clear_filters_clicked = True
-            st.rerun()
-
-    # Apply filters
+    # Apply filters from sidebar
     filtered_df = pivot_df.copy()
+    selected_coop = st.session_state.get("filter_coop", "All")
+    selected_vessel = st.session_state.get("filter_vessel", "All")
 
     if selected_coop != "All":
         filtered_df = filtered_df[filtered_df["coop_code"] == selected_coop]
@@ -235,7 +228,14 @@ def render_dashboard():
     if selected_vessel != "All":
         filtered_df = filtered_df[filtered_df["vessel_name"] == selected_vessel]
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Show active filters if any
+    if selected_coop != "All" or selected_vessel != "All":
+        filter_text = []
+        if selected_coop != "All":
+            filter_text.append(f"Co-Op: {selected_coop}")
+        if selected_vessel != "All":
+            filter_text.append(f"Vessel: {selected_vessel}")
+        st.caption(f"Filtered by: {', '.join(filter_text)}")
 
     # --- KPI CARDS ---
     total_vessels = len(filtered_df)
@@ -254,72 +254,84 @@ def render_dashboard():
     total_dusky_allocated = filtered_df["Dusky_allocation_lbs"].sum() if "Dusky_allocation_lbs" in filtered_df.columns else 0
     total_dusky_pct = (total_dusky_remaining / total_dusky_allocated * 100) if total_dusky_allocated > 0 else 0
 
+    # Section label for KPIs
+    st.markdown("<p style='color: #64748b; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;'>📊 OVERVIEW</p>", unsafe_allow_html=True)
+
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
     with kpi1:
-        st.markdown(kpi_card("Vessels Tracked", str(total_vessels)), unsafe_allow_html=True)
+        st.markdown(kpi_card("Vessels", str(total_vessels)), unsafe_allow_html=True)
     with kpi2:
         if vessels_at_risk > 0:
             st.markdown(f"""
-            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-align: center;">
-                <div style="color: #64748b; font-size: 16px; margin-bottom: 4px;">Vessels at Risk</div>
-                <div style="font-size: 32px; font-weight: bold; color: #dc2626;">{vessels_at_risk}</div>
-                <div style="color: #64748b; font-size: 13px; margin-top: 6px;">&nbsp;</div>
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center;">
+                <div style="color: #dc2626; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">At Risk</div>
+                <div style="font-size: 36px; font-weight: 700; color: #dc2626;">{vessels_at_risk}</div>
+                <div style="color: #64748b; font-size: 14px; margin-top: 8px;">&nbsp;</div>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown(kpi_card("Vessels at Risk", "0"), unsafe_allow_html=True)
+            st.markdown(kpi_card("At Risk", "0"), unsafe_allow_html=True)
     with kpi3:
-        st.markdown(species_kpi_card("POP Remaining", total_pop_pct, total_pop_remaining, total_pop_allocated), unsafe_allow_html=True)
+        st.markdown(species_kpi_card("POP Remaining", total_pop_pct, total_pop_remaining, total_pop_allocated, "POP"), unsafe_allow_html=True)
     with kpi4:
-        st.markdown(species_kpi_card("NR Remaining", total_nr_pct, total_nr_remaining, total_nr_allocated), unsafe_allow_html=True)
+        st.markdown(species_kpi_card("NR Remaining", total_nr_pct, total_nr_remaining, total_nr_allocated, "NR"), unsafe_allow_html=True)
     with kpi5:
-        st.markdown(species_kpi_card("Dusky Remaining", total_dusky_pct, total_dusky_remaining, total_dusky_allocated), unsafe_allow_html=True)
+        st.markdown(species_kpi_card("Dusky Remaining", total_dusky_pct, total_dusky_remaining, total_dusky_allocated, "Dusky"), unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
 
     # --- VESSELS NEEDING ATTENTION ---
-    st.subheader("⚠️ Vessels Needing Attention")
+    st.markdown("<p style='color: #64748b; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;'>⚠️ VESSELS NEEDING ATTENTION</p>", unsafe_allow_html=True)
 
     # Get vessels at risk (any species <10%)
     at_risk_df = filtered_df[filtered_df["vessel_at_risk"] == True].copy()
 
-    if at_risk_df.empty:
-        st.success("No vessels currently at critical risk levels")
-    else:
-        # Sort by lowest percent remaining across any species
-        at_risk_df["min_pct"] = at_risk_df[[f"{s}_pct_remaining" for s in ["POP", "NR", "Dusky"] if f"{s}_pct_remaining" in at_risk_df.columns]].min(axis=1)
-        at_risk_df = at_risk_df.sort_values("min_pct").head(7)
+    with st.container():
+        if at_risk_df.empty:
+            st.markdown("""
+            <div style='background: white; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #059669;'>
+                ✅ No vessels currently at critical risk levels
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Sort by lowest percent remaining across any species
+            at_risk_df["min_pct"] = at_risk_df[[f"{s}_pct_remaining" for s in ["POP", "NR", "Dusky"] if f"{s}_pct_remaining" in at_risk_df.columns]].min(axis=1)
+            at_risk_df = at_risk_df.sort_values("min_pct").head(7)
 
-        # Display as simple rows with colored dots
-        for _, row in at_risk_df.iterrows():
-            vessel_name = row.get("vessel_name", "Unknown")
-            llp = row.get("llp", "")
+            st.markdown("<div style='background: white; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;'>", unsafe_allow_html=True)
 
-            # Build status dots
-            dots = []
-            for species in ["POP", "NR", "Dusky"]:
-                pct_col = f"{species}_pct_remaining"
-                if pct_col in row and pd.notna(row[pct_col]):
-                    pct = row[pct_col]
-                    if pct < 10:
-                        color = "🔴"
-                    elif pct < 50:
-                        color = "🟡"
-                    else:
-                        color = "🟢"
-                    dots.append(f"{color} {species}: {pct:.1f}%")
+            # Display as simple rows with colored dots
+            for _, row in at_risk_df.iterrows():
+                vessel_name = row.get("vessel_name", "Unknown")
+                llp = row.get("llp", "")
 
-            dot_str = " &nbsp;&nbsp; ".join(dots)
-            st.markdown(f"**{vessel_name}** (LLP: {llp}) &nbsp;&nbsp; {dot_str}", unsafe_allow_html=True)
+                # Build status dots
+                dots = []
+                for species in ["POP", "NR", "Dusky"]:
+                    pct_col = f"{species}_pct_remaining"
+                    if pct_col in row and pd.notna(row[pct_col]):
+                        pct = row[pct_col]
+                        if pct < 10:
+                            color = "🔴"
+                        elif pct < 50:
+                            color = "🟡"
+                        else:
+                            color = "🟢"
+                        dots.append(f"{color} {species}: {pct:.1f}%")
 
-        if len(filtered_df[filtered_df["vessel_at_risk"] == True]) > 7:
-            st.markdown("*View all at-risk vessels in the table below*")
+                dot_str = " &nbsp;&nbsp; ".join(dots)
+                st.markdown(f"**{vessel_name}** (LLP: {llp}) &nbsp;&nbsp; {dot_str}", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+            if len(filtered_df[filtered_df["vessel_at_risk"] == True]) > 7:
+                st.markdown("*View all at-risk vessels in the table below*")
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
 
     # --- MAIN DATA TABLE ---
-    st.subheader("Quota Remaining by Vessel")
+    st.markdown("<p style='color: #64748b; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;'>📋 QUOTA REMAINING BY VESSEL</p>", unsafe_allow_html=True)
 
     # Prepare display dataframe
     display_df = filtered_df.copy()

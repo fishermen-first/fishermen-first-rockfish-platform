@@ -18,6 +18,36 @@ st.set_page_config(
 from app.auth import init_session_state, is_authenticated, login, logout, get_current_user
 
 
+@st.cache_data(ttl=300)
+def get_filter_options():
+    """Cached: Fetch coop members for filter dropdowns."""
+    from app.config import supabase
+    response = supabase.table("coop_members").select("coop_code, vessel_name").execute()
+    members_data = response.data if response.data else []
+
+    # Build lookup: coop -> vessels, vessel -> coop
+    all_coops = sorted(set(m["coop_code"] for m in members_data if m.get("coop_code")))
+    all_vessels = sorted(set(m["vessel_name"] for m in members_data if m.get("vessel_name")))
+    coop_to_vessels = {}
+    vessel_to_coop = {}
+
+    for m in members_data:
+        coop = m.get("coop_code")
+        vessel = m.get("vessel_name")
+        if coop and vessel:
+            if coop not in coop_to_vessels:
+                coop_to_vessels[coop] = []
+            coop_to_vessels[coop].append(vessel)
+            vessel_to_coop[vessel] = coop
+
+    return {
+        "all_coops": all_coops,
+        "all_vessels": all_vessels,
+        "coop_to_vessels": coop_to_vessels,
+        "vessel_to_coop": vessel_to_coop,
+    }
+
+
 def main():
     init_session_state()
 
@@ -121,6 +151,13 @@ def show_sidebar():
             [data-testid="stSidebar"] * {
                 color: white !important;
             }
+            /* Fix selectbox text visibility */
+            [data-testid="stSidebar"] [data-baseweb="select"] * {
+                color: #1e293b !important;
+            }
+            [data-testid="stSidebar"] [data-baseweb="select"] {
+                background-color: white !important;
+            }
             [data-testid="stSidebar"] button {
                 background-color: rgba(255,255,255,0.1) !important;
                 border: 1px solid rgba(255,255,255,0.2) !important;
@@ -183,6 +220,42 @@ def show_sidebar():
                 type="primary" if is_current else "secondary"
             ):
                 st.session_state.current_page = page_key
+                st.rerun()
+
+        # Dashboard filters (only show when on dashboard)
+        if role in ["admin", "manager"] and st.session_state.current_page == "dashboard":
+            st.divider()
+            st.caption("🔍 Filters")
+
+            # Get cached filter options
+            filter_opts = get_filter_options()
+
+            # Get current selections
+            current_coop = st.session_state.get("filter_coop", "All")
+            current_vessel = st.session_state.get("filter_vessel", "All")
+
+            # Build co-op options (filter by selected vessel if one is chosen)
+            if current_vessel != "All" and current_vessel in filter_opts["vessel_to_coop"]:
+                coops = ["All", filter_opts["vessel_to_coop"][current_vessel]]
+            else:
+                coops = ["All"] + filter_opts["all_coops"]
+
+            # Build vessel options (filter by selected co-op if one is chosen)
+            if current_coop != "All" and current_coop in filter_opts["coop_to_vessels"]:
+                vessels = ["All"] + sorted(filter_opts["coop_to_vessels"][current_coop])
+            else:
+                vessels = ["All"] + filter_opts["all_vessels"]
+
+            # Reset vessel when coop changes
+            def on_coop_change():
+                st.session_state.filter_vessel = "All"
+
+            st.selectbox("Co-Op", coops, key="filter_coop", on_change=on_coop_change)
+            st.selectbox("Vessel", vessels, key="filter_vessel")
+
+            if st.button("Clear Filters", use_container_width=True):
+                st.session_state.filter_coop = "All"
+                st.session_state.filter_vessel = "All"
                 st.rerun()
 
         # Spacer to push user info to bottom
