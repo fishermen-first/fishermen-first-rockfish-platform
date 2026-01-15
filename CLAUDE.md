@@ -44,18 +44,25 @@ Multi-tenant SaaS platform for Alaska commercial fishing cooperatives to track q
 
 ## App Structure
 app/
-├── main.py              # Navigation, role-based routing
+├── main.py              # Navigation, role-based routing, sidebar filters
 ├── auth.py              # Login/logout, session state
 ├── config.py            # Supabase client (cached)
 └── views/
-    ├── dashboard.py         # Quota overview, risk flags
+    ├── dashboard.py         # Quota overview, risk flags, KPI cards
     ├── transfers.py         # Create/view transfers
     ├── allocations.py       # TAC, vessel allocations
     ├── rosters.py           # Reference data
     ├── upload.py            # eFish CSV upload
     ├── vessel_owner_view.py # Read-only vessel view
     ├── account_balances.py  # eFish balances
-    └── account_detail.py    # eFish detail
+    ├── account_detail.py    # eFish detail
+    └── processor_view.py    # Processor view (WIP - stub only)
+
+## UI/Branding
+- Brand color: #1e3a5f (navy)
+- Login: centered card, white form on light gray background
+- Sidebar: navy background, white text, icons on nav items
+- Dashboard: white KPI cards, section headers, styled table
 
 ## User Roles
 - admin: full access
