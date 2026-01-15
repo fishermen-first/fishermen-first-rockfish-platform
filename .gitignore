@@ -92,3 +92,13 @@ Thumbs.db
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
+
+# Local data and documents
+sample_efish_data_*.csv
+*.pdf
+*.docx
+*.png
+nul
+
+# Reference data spreadsheets
+LLPs, Members, Coop IDs, Processor Codes*
