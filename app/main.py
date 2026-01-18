@@ -60,61 +60,214 @@ def main():
 
 
 def show_login():
-    """Display the login form."""
-    st.markdown("""
+    """Display the login form with maritime-themed design."""
+    # Wave SVG for animated background (encoded as data URI)
+    wave_svg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,60 C200,100 400,20 600,60 C800,100 1000,20 1200,60 L1200,120 L0,120 Z' fill='%23ffffff' fill-opacity='0.03'/%3E%3Cpath d='M0,80 C200,40 400,100 600,80 C800,40 1000,100 1200,80 L1200,120 L0,120 Z' fill='%23ffffff' fill-opacity='0.02'/%3E%3C/svg%3E"
+
+    st.markdown(f"""
     <style>
-        #MainMenu, footer, header {visibility: hidden;}
-        .stApp {
-            background-color: #f0f4f8;
-        }
-        [data-testid="stMainBlockContainer"] {
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+        #MainMenu, footer, header {{visibility: hidden;}}
+
+        /* Ocean depth gradient background */
+        .stApp {{
+            background:
+                linear-gradient(
+                    180deg,
+                    #1a3d5c 0%,
+                    #15304a 20%,
+                    #0f2438 45%,
+                    #0a1a2a 70%,
+                    #06121c 100%
+                );
+            min-height: 100vh;
+            position: relative;
+        }}
+
+        /* Subtle depth contour lines - bathymetric chart texture */
+        .stApp::before {{
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                repeating-linear-gradient(
+                    180deg,
+                    transparent,
+                    transparent 60px,
+                    rgba(255,255,255,0.015) 60px,
+                    rgba(255,255,255,0.015) 61px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 80px,
+                    rgba(255,255,255,0.008) 80px,
+                    rgba(255,255,255,0.008) 81px
+                );
+            pointer-events: none;
+            z-index: 0;
+        }}
+
+        /* Animated wave layer at bottom */
+        .stApp::after {{
+            content: '';
+            position: fixed;
+            bottom: 0;
+            left: -100%;
+            width: 300%;
+            height: 180px;
+            background-image: url("{wave_svg}");
+            background-repeat: repeat-x;
+            background-size: 33.33% 100%;
+            animation: drift 25s linear infinite;
+            z-index: 1;
+            pointer-events: none;
+        }}
+
+        @keyframes drift {{
+            0% {{ transform: translateX(0); }}
+            100% {{ transform: translateX(33.33%); }}
+        }}
+
+        /* Centered form container */
+        [data-testid="stMainBlockContainer"] {{
             max-width: 480px;
             margin: 0 auto;
-            padding-top: 12vh;
-        }
-        /* Style the form container */
-        [data-testid="stForm"] {
-            background: white;
-            padding: 3rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: none;
-        }
-        /* More space between form fields */
-        [data-testid="stForm"] .stTextInput {
-            margin-bottom: 1rem;
-        }
-        .stFormSubmitButton > button {
-            background-color: #1e3a5f !important;
-            color: white !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 1rem !important;
+            padding-top: 8vh;
+            position: relative;
+            z-index: 10;
+        }}
+
+        /* Frosted glass card effect */
+        [data-testid="stForm"] {{
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 2.25rem 2rem 2rem 2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }}
+
+        /* Form field spacing */
+        [data-testid="stForm"] .stTextInput {{
+            margin-bottom: 0.75rem;
+        }}
+
+        /* Input labels */
+        [data-testid="stForm"] .stTextInput > label {{
+            color: rgba(255, 255, 255, 0.85) !important;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
             font-weight: 500 !important;
-            margin-top: 0.5rem;
-        }
-        .stFormSubmitButton > button:hover {
-            background-color: #2c4a6e !important;
-        }
-        /* Clean up input styling */
-        .stTextInput > div > div > input {
-            border-radius: 8px;
-            padding: 0.75rem 1rem !important;
-            font-size: 1rem !important;
+            font-size: 0.875rem !important;
+            letter-spacing: 0.01em;
+        }}
+
+        /* Text inputs */
+        .stTextInput > div > div > input {{
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 10px !important;
+            padding: 0.8rem 1rem !important;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            font-size: 0.95rem !important;
+            color: #0a1a2a !important;
+            transition: all 0.2s ease !important;
             width: 100% !important;
-        }
-        /* Hide "Press Enter to submit" helper text */
-        .stTextInput div[data-testid="InputInstructions"] {
+        }}
+
+        .stTextInput > div > div > input:focus {{
+            border-color: #4a9ead !important;
+            box-shadow: 0 0 0 3px rgba(74, 158, 173, 0.2) !important;
+            outline: none !important;
+        }}
+
+        .stTextInput > div > div > input::placeholder {{
+            color: #94a3b8 !important;
+        }}
+
+        /* Hide helper text */
+        .stTextInput div[data-testid="InputInstructions"] {{
             display: none;
-        }
+        }}
+
+        /* Submit button */
+        .stFormSubmitButton > button {{
+            background: linear-gradient(135deg, #1e3a5f 0%, #2a4d6e 50%, #1e3a5f 100%) !important;
+            background-size: 200% 200% !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 10px !important;
+            padding: 0.75rem 1.5rem !important;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+            letter-spacing: 0.02em !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 16px rgba(30, 58, 95, 0.4) !important;
+            margin-top: 0.5rem !important;
+        }}
+
+        .stFormSubmitButton > button:hover {{
+            background-position: 100% 0 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 6px 24px rgba(30, 58, 95, 0.5) !important;
+        }}
+
+        .stFormSubmitButton > button:active {{
+            transform: translateY(0) !important;
+        }}
+
+        /* Error/warning messages */
+        [data-testid="stForm"] .stAlert {{
+            background: rgba(239, 68, 68, 0.15) !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+            border-radius: 8px !important;
+        }}
+
+        [data-testid="stForm"] .stAlert p {{
+            color: #fca5a5 !important;
+        }}
+
+        /* Spinner */
+        [data-testid="stForm"] .stSpinner > div {{
+            border-top-color: #4a9ead !important;
+        }}
     </style>
     """, unsafe_allow_html=True)
 
-    # Branding header
+    # Branding header with refined maritime styling
     st.markdown("""
-    <div style='text-align: center; margin-bottom: 2rem;'>
-        <div style='font-size: 3rem; margin-bottom: 0.25rem;'>🐟</div>
-        <div style='font-size: 1.75rem; font-weight: 600; color: #1e3a5f; margin-bottom: 0.25rem;'>Fishermen First</div>
-        <div style='font-size: 1rem; color: #64748b;'>Rockfish Quota Management</div>
+    <div style='text-align: center; margin-bottom: 1.75rem; position: relative; z-index: 10;'>
+        <div style='
+            font-size: 3.5rem;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+        '>🐟</div>
+        <div style='
+            font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.35rem;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        '>Fishermen First</div>
+        <div style='
+            font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.6);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        '>Rockfish Quota Management</div>
     </div>
     """, unsafe_allow_html=True)
 
