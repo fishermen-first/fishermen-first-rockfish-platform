@@ -7,8 +7,9 @@ This document covers the test suite for the Fishermen First Rockfish Platform.
 | Type | Count | Location |
 |------|-------|----------|
 | Unit Tests | 234 | `tests/` |
-| E2E Tests | 6 | `tests/e2e/` |
-| **Total** | **240** | |
+| Integration Tests | 15 | `tests/test_quota_tracking.py` |
+| E2E Tests | 10 | `tests/e2e/` |
+| **Total** | **259** | |
 
 ## Quick Start
 
@@ -16,7 +17,7 @@ This document covers the test suite for the Fishermen First Rockfish Platform.
 # Run all unit tests (fast, ~4 seconds)
 pytest tests/ --ignore=tests/e2e -v
 
-# Run all tests including e2e (~35 seconds)
+# Run all tests including e2e (~80 seconds)
 pytest tests/ -v
 
 # Run specific test file
@@ -31,14 +32,18 @@ open htmlcov/index.html
 
 ```
 tests/
-├── conftest.py          # Shared fixtures (mock Supabase, session state)
-├── test_auth.py         # Authentication & authorization (47 tests)
-├── test_dashboard.py    # Dashboard logic & formatting (27 tests)
-├── test_transfers.py    # Quota transfers (83 tests)
-├── test_upload.py       # CSV upload & parsing (35 tests)
-├── test_vessel_owner.py # Vessel owner view (28 tests)
+├── conftest.py            # Shared fixtures (mock Supabase, session state)
+├── test_auth.py           # Authentication & authorization (47 tests)
+├── test_dashboard.py      # Dashboard logic & formatting (27 tests)
+├── test_quota_tracking.py # DB integration: quota math (15 tests) *
+├── test_transfers.py      # Quota transfers (83 tests)
+├── test_upload.py         # CSV upload & parsing (35 tests)
+├── test_vessel_owner.py   # Vessel owner view (28 tests)
 └── e2e/
-    └── test_app.py      # Browser-based tests (6 tests)
+    └── test_app.py        # Browser-based tests (10 tests) **
+
+* Requires SUPABASE_SERVICE_ROLE_KEY
+** Requires TEST_PASSWORD and ADMIN_PASSWORD
 ```
 
 ## Test Coverage by File
@@ -95,6 +100,18 @@ tests/
 | **TestTransferSoftDelete** | 2 | Soft delete behavior |
 | **TestTransferDisplayFormatting** | 3 | Display formatting |
 
+### test_quota_tracking.py (15 tests) - Integration
+
+**Requires:** `SUPABASE_SERVICE_ROLE_KEY` in `.env`
+
+| Class | Tests | What It Covers |
+|-------|-------|----------------|
+| TestQuotaAllocation | 2 | Fresh allocation display, zero handling |
+| TestQuotaTransfers | 4 | In/out reduces/increases, accumulation, soft delete |
+| TestQuotaHarvests | 3 | Harvest deduction, accumulation, soft delete |
+| TestQuotaIsolation | 2 | Species independence, year independence |
+| TestQuotaEdgeCases | 4 | Full formula, zero remaining, overage, decimals |
+
 ### test_upload.py (35 tests)
 
 | Class | Tests | What It Covers |
@@ -119,12 +136,13 @@ tests/
 | TestVesselOwnerTransferDirection | 2 | IN/OUT direction |
 | TestVesselOwnerNavigation | 4 | Nav options by role |
 
-### test_app.py - E2E Tests (6 tests)
+### test_app.py - E2E Tests (10 tests)
 
 | Class | Tests | What It Covers |
 |-------|-------|----------------|
 | TestLoginPage | 3 | Page loads, empty form error, invalid credentials |
 | TestVesselOwnerView | 3 | Login flow, quota cards, logout |
+| TestAdminTransferFlow | 4 | Transfers page access, form elements, validation, quota display |
 
 ## E2E Tests
 
@@ -150,10 +168,10 @@ TEST_PASSWORD="password" pytest tests/e2e/ -v
 
 ### Test Accounts
 
-| Role | Email | Notes |
-|------|-------|-------|
-| Vessel Owner | `vikram.nayani+1@gmail.com` | Used for e2e tests |
-| Admin | `vikram@fishermenfirst.org` | Full access |
+| Role | Email | Env Variable | Notes |
+|------|-------|--------------|-------|
+| Vessel Owner | `vikram.nayani+1@gmail.com` | `TEST_PASSWORD` | Used for vessel owner e2e tests |
+| Admin | `vikram@fishermenfirst.org` | `ADMIN_PASSWORD` | Used for admin transfer e2e tests |
 
 **Important:** Never commit passwords. Use environment variables.
 
@@ -278,7 +296,6 @@ These scenarios are **documented but not fully tested**:
 1. **Concurrency** - Race condition between quota check and insert
 2. **Inactive Vessels** - No filter in transfer dropdowns
 3. **RLS Enforcement** - Relies on Supabase, not tested in unit tests
-4. **Real Database** - All tests use mocks
 
 ## CI/CD Integration
 
@@ -294,6 +311,7 @@ For GitHub Actions or similar:
 - name: Run E2E Tests
   env:
     TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+    ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
   run: |
     pip install playwright pytest-playwright
     playwright install chromium
