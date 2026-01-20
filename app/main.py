@@ -18,6 +18,18 @@ st.set_page_config(
 from app.auth import init_session_state, is_authenticated, login, logout, get_current_user
 
 
+def _get_pending_bycatch_count() -> int:
+    """Get pending bycatch alert count for sidebar badge."""
+    org_id = st.session_state.get("org_id")
+    if not org_id:
+        return 0
+    try:
+        from app.views.bycatch_alerts import get_pending_alert_count
+        return get_pending_alert_count(org_id)
+    except Exception:
+        return 0
+
+
 @st.cache_data(ttl=300)
 def get_filter_options():
     """Cached: Fetch coop members for filter dropdowns."""
@@ -337,8 +349,15 @@ def show_sidebar():
 
         # Role-based navigation with icons
         if role in ["admin", "manager"]:
+            # Get pending bycatch alert count for badge
+            pending_count = _get_pending_bycatch_count()
+            bycatch_label = "⚠️  Bycatch Alerts"
+            if pending_count > 0:
+                bycatch_label = f"⚠️  Bycatch Alerts ({pending_count})"
+
             nav_options = {
                 "dashboard": "📊  Dashboard",
+                "bycatch_alerts": bycatch_label,
                 "account_balances": "💰  Account Balances",
                 "account_detail": "📋  Account Detail",
                 "transfers": "🔄  Transfers",
@@ -355,6 +374,7 @@ def show_sidebar():
         elif role == "vessel_owner":
             nav_options = {
                 "vessel_owner_view": "🚢  My Vessel",
+                "report_bycatch": "📍  Report Bycatch",
             }
             default_page = "vessel_owner_view"
         else:
@@ -460,6 +480,12 @@ def show_current_page():
     elif page == "vessel_owner_view":
         from app.views import vessel_owner_view
         vessel_owner_view.show()
+    elif page == "bycatch_alerts":
+        from app.views import bycatch_alerts
+        bycatch_alerts.show()
+    elif page == "report_bycatch":
+        from app.views import report_bycatch
+        report_bycatch.show()
     elif page is None:
         st.warning("No pages available for your role.")
     else:

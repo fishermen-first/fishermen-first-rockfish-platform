@@ -28,6 +28,13 @@ def clear_streamlit_caches():
         _fetch_llp_vessel_map,
         _fetch_processor_map
     )
+    from app.views.bycatch_alerts import (
+        _fetch_alerts,
+        _fetch_psc_species,
+        _fetch_coop_members as _fetch_bycatch_coop_members,
+        _fetch_coops,
+        _fetch_vessel_contacts_count
+    )
 
     # Clear all caches before test
     _fetch_quota_remaining.clear()
@@ -41,6 +48,11 @@ def clear_streamlit_caches():
     _fetch_my_harvests.clear()
     _fetch_llp_vessel_map.clear()
     _fetch_processor_map.clear()
+    _fetch_alerts.clear()
+    _fetch_psc_species.clear()
+    _fetch_bycatch_coop_members.clear()
+    _fetch_coops.clear()
+    _fetch_vessel_contacts_count.clear()
 
     yield
 
@@ -56,6 +68,11 @@ def clear_streamlit_caches():
     _fetch_my_harvests.clear()
     _fetch_llp_vessel_map.clear()
     _fetch_processor_map.clear()
+    _fetch_alerts.clear()
+    _fetch_psc_species.clear()
+    _fetch_bycatch_coop_members.clear()
+    _fetch_coops.clear()
+    _fetch_vessel_contacts_count.clear()
 
 
 @pytest.fixture
