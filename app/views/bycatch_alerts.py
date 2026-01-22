@@ -2,7 +2,8 @@
 
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
+from zoneinfo import ZoneInfo
 from app.config import supabase
 from app.utils.styles import page_header, section_header, NAVY, GRAY_TEXT
 from app.utils.coordinates import (
@@ -60,7 +61,8 @@ def _fetch_alerts(org_id: str, status: str | None = None):
     query = supabase.table("bycatch_alerts").select(
         "id, org_id, reported_by_llp, species_code, latitude, longitude, "
         "amount, details, status, created_at, created_by, "
-        "shared_at, shared_by, shared_recipient_count"
+        "shared_at, shared_by, shared_recipient_count, "
+        "resolved_at, resolved_by"
     ).eq("org_id", org_id).eq("is_deleted", False)
 
     if status:
@@ -179,15 +181,18 @@ def fetch_alerts(
             coop_llps = {m["llp"] for m in members if m.get("coop_code") == coop_code}
             alerts = [a for a in alerts if a["reported_by_llp"] in coop_llps]
 
+        # Convert UTC timestamps to Alaska time for date filtering
+        ak_tz = ZoneInfo("America/Anchorage")
+
         if date_from:
             alerts = [a for a in alerts if datetime.fromisoformat(
                 a["created_at"].replace("Z", "+00:00")
-            ).date() >= date_from]
+            ).astimezone(ak_tz).date() >= date_from]
 
         if date_to:
             alerts = [a for a in alerts if datetime.fromisoformat(
                 a["created_at"].replace("Z", "+00:00")
-            ).date() <= date_to]
+            ).astimezone(ak_tz).date() <= date_to]
 
         return alerts
     except Exception as e:
@@ -293,6 +298,44 @@ def dismiss_alert(alert_id: str, user_id: str) -> tuple[bool, str | None]:
         return False, str(e)
 
 
+def resolve_alert(alert_id: str, user_id: str) -> tuple[bool, str | None]:
+    """
+    Mark a shared alert as resolved (no longer an active hotspot).
+
+    Args:
+        alert_id: Alert UUID
+        user_id: ID of user resolving the alert
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Check current status
+        check = supabase.table("bycatch_alerts").select(
+            "status"
+        ).eq("id", alert_id).execute()
+
+        if not check.data:
+            return False, "Alert not found"
+
+        if check.data[0]["status"] != "shared":
+            return False, "Only shared alerts can be resolved"
+
+        response = supabase.table("bycatch_alerts").update({
+            "status": "resolved",
+            "resolved_by": user_id,
+            "resolved_at": datetime.utcnow().isoformat()
+        }).eq("id", alert_id).execute()
+
+        if response.data:
+            clear_alerts_cache()
+            return True, None
+        return False, "Resolve operation returned no data"
+
+    except Exception as e:
+        return False, str(e)
+
+
 def share_alert(alert_id: str, user_id: str) -> tuple[bool, dict]:
     """
     Share alert to fleet (marks as shared, email via Edge Function later).
@@ -333,9 +376,36 @@ def share_alert(alert_id: str, user_id: str) -> tuple[bool, dict]:
 
         if response.data:
             clear_alerts_cache()
-            # TODO: Call Edge Function to send emails
-            # For now, just mark as shared
-            return True, {"sent_count": recipient_count, "email_pending": True}
+            # Call Edge Function to send emails via HTTP (supabase-py functions.invoke is async-only)
+            try:
+                import requests
+                import os
+                edge_url = f"{os.getenv('SUPABASE_URL')}/functions/v1/send-bycatch-alert"
+                headers = {
+                    "Authorization": f"Bearer {os.getenv('SUPABASE_KEY')}",
+                    "Content-Type": "application/json"
+                }
+                email_response = requests.post(
+                    edge_url,
+                    json={"alert_id": alert_id},
+                    headers=headers,
+                    timeout=30
+                )
+                result = email_response.json()
+
+                if email_response.status_code != 200 or result.get("error"):
+                    return True, {
+                        "sent_count": recipient_count,
+                        "email_error": result.get("error", f"HTTP {email_response.status_code}")
+                    }
+                return True, {
+                    "sent_count": result.get("sent_count", recipient_count),
+                    "email_sent": True
+                }
+            except Exception as email_err:
+                # Alert is shared even if email fails - log but don't fail
+                print(f"Email send error (alert still shared): {email_err}")
+                return True, {"sent_count": recipient_count, "email_error": str(email_err)}
 
         return False, {"error": "Share operation returned no data"}
 
@@ -794,7 +864,7 @@ def show():
         )
 
     # --- TABS ---
-    tab_pending, tab_shared, tab_all = st.tabs(["Pending", "Shared", "All"])
+    tab_pending, tab_shared, tab_resolved, tab_all = st.tabs(["Pending", "Shared", "Resolved", "All"])
 
     # --- PENDING TAB ---
     with tab_pending:
@@ -819,7 +889,8 @@ def show():
                     members,
                     user_id,
                     org_id,
-                    show_actions=True
+                    show_actions=True,
+                    key_prefix="pending"
                 )
 
     # --- SHARED TAB ---
@@ -845,7 +916,36 @@ def show():
                     members,
                     user_id,
                     org_id,
-                    show_actions=False
+                    show_actions=False,
+                    show_resolve=True,
+                    key_prefix="shared"
+                )
+
+    # --- RESOLVED TAB ---
+    with tab_resolved:
+        resolved_alerts = fetch_alerts(
+            org_id,
+            status="resolved",
+            species_code=selected_species,
+            coop_code=selected_coop,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        if not resolved_alerts:
+            st.info("No resolved alerts match your filters.")
+        else:
+            st.markdown(f"**{len(resolved_alerts)} resolved alert(s)**")
+
+            for alert in resolved_alerts:
+                _render_alert_card(
+                    alert,
+                    species_list,
+                    members,
+                    user_id,
+                    org_id,
+                    show_actions=False,
+                    key_prefix="resolved"
                 )
 
     # --- ALL TAB ---
@@ -872,7 +972,8 @@ def show():
                     members,
                     user_id,
                     org_id,
-                    show_actions=show_actions
+                    show_actions=show_actions,
+                    key_prefix="all"
                 )
 
 
@@ -882,9 +983,13 @@ def _render_alert_card(
     members: list[dict],
     user_id: str | None,
     org_id: str,
-    show_actions: bool = True
+    show_actions: bool = True,
+    show_resolve: bool = False,
+    key_prefix: str = ""
 ):
     """Render a single alert card with optional actions."""
+    # Create unique key base for this card instance
+    key_base = f"{key_prefix}_{alert['id']}" if key_prefix else alert['id']
 
     species_name = get_species_name(alert["species_code"], species_list)
     vessel_name = get_vessel_name(alert["reported_by_llp"], members)
@@ -894,7 +999,8 @@ def _render_alert_card(
     status_badges = {
         "pending": "🟡 Pending",
         "shared": "✅ Shared",
-        "dismissed": "❌ Dismissed"
+        "dismissed": "❌ Dismissed",
+        "resolved": "🔵 Resolved"
     }
     status_badge = status_badges.get(alert["status"], alert["status"])
 
@@ -929,22 +1035,38 @@ def _render_alert_card(
             recipient_count = alert.get("shared_recipient_count", 0)
             st.caption(f"Shared on {shared_time} to {recipient_count} recipients")
 
+        # Resolve button for shared alerts
+        if show_resolve and alert["status"] == "shared":
+            if st.button("Mark Resolved", key=f"resolve_{key_base}", use_container_width=False):
+                if user_id:
+                    success, error = resolve_alert(alert["id"], user_id)
+                    if success:
+                        st.success("Alert marked as resolved.")
+                        st.rerun()
+                    else:
+                        st.error(f"Failed to resolve: {error}")
+
+        # Resolved info
+        if alert["status"] == "resolved" and alert.get("resolved_at"):
+            resolved_time = format_timestamp(alert["resolved_at"])
+            st.caption(f"Resolved on {resolved_time}")
+
         # Action buttons for pending alerts
         if show_actions and alert["status"] == "pending":
             col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
 
             with col1:
-                if st.button("Edit", key=f"edit_{alert['id']}", use_container_width=True):
+                if st.button("Edit", key=f"edit_{key_base}", use_container_width=True):
                     st.session_state[f"editing_{alert['id']}"] = True
                     st.rerun()
 
             with col2:
-                if st.button("Preview", key=f"preview_{alert['id']}", use_container_width=True):
+                if st.button("Preview", key=f"preview_{key_base}", use_container_width=True):
                     st.session_state[f"preview_{alert['id']}"] = True
                     st.rerun()
 
             with col3:
-                if st.button("Share", key=f"share_{alert['id']}", type="primary", use_container_width=True):
+                if st.button("Share", key=f"share_{key_base}", type="primary", use_container_width=True):
                     if user_id:
                         success, result = share_alert(alert["id"], user_id)
                         if success:
@@ -957,7 +1079,7 @@ def _render_alert_card(
                             st.error(f"Failed to share: {result.get('error', 'Unknown error')}")
 
             with col4:
-                if st.button("Dismiss", key=f"dismiss_{alert['id']}", use_container_width=True):
+                if st.button("Dismiss", key=f"dismiss_{key_base}", use_container_width=True):
                     if user_id:
                         success, error = dismiss_alert(alert["id"], user_id)
                         if success:
@@ -968,17 +1090,18 @@ def _render_alert_card(
 
             # Edit form (shown when editing)
             if st.session_state.get(f"editing_{alert['id']}"):
-                _render_edit_form(alert, user_id)
+                _render_edit_form(alert, user_id, key_prefix)
 
             # Email preview (shown when previewing)
             if st.session_state.get(f"preview_{alert['id']}"):
-                _render_email_preview(alert, species_list, org_id)
+                _render_email_preview(alert, species_list, org_id, key_prefix)
 
         st.divider()
 
 
-def _render_edit_form(alert: dict, user_id: str | None):
+def _render_edit_form(alert: dict, user_id: str | None, key_prefix: str = ""):
     """Render inline edit form for an alert."""
+    key_base = f"{key_prefix}_{alert['id']}" if key_prefix else alert['id']
 
     with st.expander("Edit Alert Details", expanded=True):
         col1, col2 = st.columns(2)
@@ -991,7 +1114,7 @@ def _render_edit_form(alert: dict, user_id: str | None):
                 value=float(alert["latitude"]),
                 step=0.001,
                 format="%.6f",
-                key=f"edit_lat_{alert['id']}"
+                key=f"edit_lat_{key_base}"
             )
 
         with col2:
@@ -1002,7 +1125,7 @@ def _render_edit_form(alert: dict, user_id: str | None):
                 value=float(alert["longitude"]),
                 step=0.001,
                 format="%.6f",
-                key=f"edit_lon_{alert['id']}"
+                key=f"edit_lon_{key_base}"
             )
 
         new_amount = st.number_input(
@@ -1010,20 +1133,20 @@ def _render_edit_form(alert: dict, user_id: str | None):
             min_value=1.0,
             value=float(alert["amount"]),
             step=10.0,
-            key=f"edit_amount_{alert['id']}"
+            key=f"edit_amount_{key_base}"
         )
 
         new_details = st.text_area(
             "Details",
             value=alert.get("details") or "",
             max_chars=1000,
-            key=f"edit_details_{alert['id']}"
+            key=f"edit_details_{key_base}"
         )
 
         col_save, col_cancel = st.columns(2)
 
         with col_save:
-            if st.button("Save Changes", key=f"save_{alert['id']}", type="primary", use_container_width=True):
+            if st.button("Save Changes", key=f"save_{key_base}", type="primary", use_container_width=True):
                 # Validate
                 valid, error = validate_alert_edit(
                     latitude=new_lat,
@@ -1050,13 +1173,14 @@ def _render_edit_form(alert: dict, user_id: str | None):
                         st.error(f"Failed to update: {error}")
 
         with col_cancel:
-            if st.button("Cancel", key=f"cancel_{alert['id']}", use_container_width=True):
+            if st.button("Cancel", key=f"cancel_{key_base}", use_container_width=True):
                 st.session_state[f"editing_{alert['id']}"] = False
                 st.rerun()
 
 
-def _render_email_preview(alert: dict, species_list: list[dict], org_id: str):
+def _render_email_preview(alert: dict, species_list: list[dict], org_id: str, key_prefix: str = ""):
     """Render email preview for an alert."""
+    key_base = f"{key_prefix}_{alert['id']}" if key_prefix else alert['id']
 
     preview = generate_email_preview(alert, species_list)
     recipient_count = get_recipient_count(org_id)
@@ -1068,6 +1192,6 @@ def _render_email_preview(alert: dict, species_list: list[dict], org_id: str):
         st.divider()
         st.caption(f"This email will be sent to **{recipient_count}** vessel contacts.")
 
-        if st.button("Close Preview", key=f"close_preview_{alert['id']}", use_container_width=True):
+        if st.button("Close Preview", key=f"close_preview_{key_base}", use_container_width=True):
             st.session_state[f"preview_{alert['id']}"] = False
             st.rerun()
