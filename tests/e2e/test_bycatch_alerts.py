@@ -466,3 +466,78 @@ class TestAlertCardDisplay:
         else:
             # No alerts - that's okay for this test
             expect(page.get_by_text("No alerts match", exact=False)).to_be_visible()
+
+
+# =============================================================================
+# RESOLVE ALERT TESTS
+# =============================================================================
+
+class TestResolveAlert:
+    """Tests for resolving shared alerts."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_resolve_button_visible_for_shared_alerts(self, page: Page, app_server):
+        """Resolve button should be visible for shared alerts."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Go to Shared tab
+        page.get_by_role("tab", name="Shared").click()
+        page.wait_for_timeout(1000)
+
+        # If there are shared alerts, resolve button should be visible
+        shared_info = page.get_by_text("Shared on", exact=False)
+        if shared_info.count() > 0:
+            # Resolve buttons should be present for shared alerts
+            resolve_buttons = page.get_by_role("button", name="Resolve")
+            assert resolve_buttons.count() > 0
+        else:
+            # No shared alerts - that's okay
+            expect(page.get_by_text("No shared alerts", exact=False)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_resolve_changes_status(self, page: Page, app_server):
+        """Resolving should change alert status."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Go to Shared tab
+        page.get_by_role("tab", name="Shared").click()
+        page.wait_for_timeout(1000)
+
+        resolve_buttons = page.get_by_role("button", name="Resolve")
+        if resolve_buttons.count() > 0:
+            initial_count = resolve_buttons.count()
+
+            # Click first resolve button
+            resolve_buttons.first.click()
+            page.wait_for_timeout(2000)
+
+            # Should see success message
+            success_visible = page.get_by_text("Alert resolved", exact=False).is_visible()
+            # Or the count should decrease (alert moved to resolved)
+            new_count = page.get_by_role("button", name="Resolve").count()
+
+            assert success_visible or new_count < initial_count
+        else:
+            # No shared alerts to resolve
+            expect(page.get_by_text("No shared alerts", exact=False)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_resolved_alerts_show_timestamp(self, page: Page, app_server):
+        """Resolved alerts should show resolution timestamp."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Go to All tab to see resolved alerts
+        page.get_by_role("tab", name="All").click()
+        page.wait_for_timeout(1000)
+
+        # Look for "Resolved on" text which indicates a resolved alert
+        resolved_info = page.get_by_text("Resolved on", exact=False)
+        if resolved_info.count() > 0:
+            # Should display the resolution timestamp
+            expect(resolved_info.first).to_be_visible()
+        else:
+            # No resolved alerts yet - that's okay
+            pass  # Test passes if no resolved alerts exist

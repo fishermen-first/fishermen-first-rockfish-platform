@@ -1017,6 +1017,8 @@ def _render_alert_card(
                         if success:
                             if result.get("already_shared"):
                                 st.info("Alert was already shared.")
+                            elif result.get("email_error"):
+                                st.warning(f"Alert shared to {result.get('sent_count', 0)} recipients, but email failed: {result.get('email_error')}")
                             else:
                                 st.success(f"Alert shared to {result.get('sent_count', 0)} recipients!")
                             st.rerun()
