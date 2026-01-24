@@ -105,3 +105,6 @@ LLPs, Members, Coop IDs, Processor Codes*
 
 # Claude Code local settings (may contain API tokens)
 .claude/settings.local.json
+
+# Session state (personal workflow artifact)
+.planning/
