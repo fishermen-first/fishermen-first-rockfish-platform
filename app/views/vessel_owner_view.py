@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 from app.config import supabase
 from app.auth import require_auth, is_vessel_owner, get_user_llp
+from app.utils.formatting import format_lbs, get_pct_color
 
 CURRENT_YEAR = 2026
 SPECIES_MAP = {141: "POP", 136: "NR", 172: "Dusky"}
@@ -92,31 +93,6 @@ def _fetch_processor_map() -> dict:
 # =============================================================================
 # Helper functions
 # =============================================================================
-
-def format_lbs(value) -> str:
-    """Format pounds as M, K, or raw number."""
-    if value is None:
-        return "N/A"
-    abs_value = abs(value)
-    sign = "-" if value < 0 else ""
-    if abs_value >= 1_000_000:
-        return f"{sign}{abs_value / 1_000_000:.1f}M"
-    elif abs_value >= 1_000:
-        return f"{sign}{abs_value / 1_000:.1f}K"
-    else:
-        return f"{int(value)}"
-
-
-def get_pct_color(pct) -> str:
-    """Return color based on percent remaining."""
-    if pct is None:
-        return "#94a3b8"  # gray
-    if pct < 10:
-        return "#dc2626"  # red
-    elif pct < 50:
-        return "#d97706"  # amber
-    return "#059669"  # green
-
 
 def quota_card(species: str, remaining: float, allocation: float) -> str:
     """Generate HTML for a quota card."""

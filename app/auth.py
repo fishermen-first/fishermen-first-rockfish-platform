@@ -1,25 +1,24 @@
 import streamlit as st
 from app.config import supabase
 
+# Default values for session state variables (used by init and logout)
+_SESSION_DEFAULTS = {
+    "authenticated": False,
+    "user": None,
+    "user_role": None,
+    "processor_code": None,
+    "org_id": None,
+    "user_llp": None,
+    "access_token": None,
+    "refresh_token": None,
+}
+
 
 def init_session_state():
     """Initialize authentication-related session state variables."""
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-    if "user" not in st.session_state:
-        st.session_state.user = None
-    if "user_role" not in st.session_state:
-        st.session_state.user_role = None
-    if "processor_code" not in st.session_state:
-        st.session_state.processor_code = None
-    if "org_id" not in st.session_state:
-        st.session_state.org_id = None
-    if "user_llp" not in st.session_state:
-        st.session_state.user_llp = None
-    if "access_token" not in st.session_state:
-        st.session_state.access_token = None
-    if "refresh_token" not in st.session_state:
-        st.session_state.refresh_token = None
+    for key, default in _SESSION_DEFAULTS.items():
+        if key not in st.session_state:
+            st.session_state[key] = default
 
 
 def login(email: str, password: str) -> tuple[bool, str]:
@@ -66,14 +65,9 @@ def logout():
     except Exception:
         pass  # Sign out locally even if remote fails
 
-    st.session_state.authenticated = False
-    st.session_state.user = None
-    st.session_state.user_role = None
-    st.session_state.processor_code = None
-    st.session_state.org_id = None
-    st.session_state.user_llp = None
-    st.session_state.access_token = None
-    st.session_state.refresh_token = None
+    # Reset all session state to defaults
+    for key, default in _SESSION_DEFAULTS.items():
+        st.session_state[key] = default
 
     # Clear selected page so it resets on next login
     if "current_page" in st.session_state:

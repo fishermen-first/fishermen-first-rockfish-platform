@@ -4,13 +4,8 @@ import streamlit as st
 from datetime import datetime
 from app.config import supabase
 from app.auth import require_role
-from app.utils.coordinates import (
-    dms_to_decimal,
-    decimal_to_dms,
-    format_coordinates_dms,
-    validate_latitude_dms,
-    validate_longitude_dms
-)
+from app.utils.coordinates import format_coordinates_dms
+from app.components.coordinate_input import render_coordinate_inputs
 
 
 @st.cache_data(ttl=300)
@@ -124,61 +119,11 @@ def show():
     # --- REPORT FORM ---
     section_header("LOCATION & SPECIES", "📍")
 
-    # Latitude in DMS format (captain-friendly)
-    st.caption("**Latitude** (50° - 72° N for Alaska)")
-    lat_col1, lat_col2, lat_col3 = st.columns([2, 2, 1])
-    with lat_col1:
-        lat_deg = st.number_input(
-            "Degrees",
-            min_value=50,
-            max_value=72,
-            value=57,
-            step=1,
-            key="lat_deg"
-        )
-    with lat_col2:
-        lat_min = st.number_input(
-            "Minutes",
-            min_value=0.0,
-            max_value=59.9,
-            value=0.0,
-            step=0.1,
-            format="%.1f",
-            key="lat_min"
-        )
-    with lat_col3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.write("**N**")
-
-    # Longitude in DMS format (captain-friendly)
-    st.caption("**Longitude** (130° - 180° W for Alaska)")
-    lon_col1, lon_col2, lon_col3 = st.columns([2, 2, 1])
-    with lon_col1:
-        lon_deg = st.number_input(
-            "Degrees",
-            min_value=130,
-            max_value=180,
-            value=152,
-            step=1,
-            key="lon_deg"
-        )
-    with lon_col2:
-        lon_min = st.number_input(
-            "Minutes",
-            min_value=0.0,
-            max_value=59.9,
-            value=0.0,
-            step=0.1,
-            format="%.1f",
-            key="lon_min"
-        )
-    with lon_col3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.write("**W**")
-
-    # Convert DMS to decimal for storage
-    latitude = dms_to_decimal(lat_deg, lat_min, 'N')
-    longitude = dms_to_decimal(lon_deg, lon_min, 'W')
+    # Coordinate input using shared component
+    latitude, longitude = render_coordinate_inputs(
+        lat_key_prefix="report_",
+        lon_key_prefix="report_"
+    )
 
     # Species selection (outside form for dynamic label updates)
     species_options = list(psc_species.keys())

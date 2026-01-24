@@ -25,11 +25,11 @@ class TestSpeciesMap:
 
 
 class TestGetRiskLevel:
-    """Tests for get_risk_level function."""
+    """Tests for get_risk_level function (from shared formatting module)."""
 
     def test_critical_under_10_percent(self):
         """Should return 'critical' for <10%."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         assert get_risk_level(0) == 'critical'
         assert get_risk_level(5) == 'critical'
@@ -37,7 +37,7 @@ class TestGetRiskLevel:
 
     def test_warning_10_to_50_percent(self):
         """Should return 'warning' for 10-50%."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         assert get_risk_level(10) == 'warning'
         assert get_risk_level(25) == 'warning'
@@ -45,7 +45,7 @@ class TestGetRiskLevel:
 
     def test_ok_over_50_percent(self):
         """Should return 'ok' for >50%."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         assert get_risk_level(50) == 'ok'
         assert get_risk_level(75) == 'ok'
@@ -53,24 +53,26 @@ class TestGetRiskLevel:
 
     def test_na_for_none(self):
         """Should return 'na' for None."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         assert get_risk_level(None) == 'na'
 
-    def test_na_for_nan(self):
-        """Should return 'na' for NaN."""
+    def test_na_for_nan_via_wrapper(self):
+        """Dashboard's wrapper should return 'na' for NaN values in DataFrames."""
         import numpy as np
-        from app.views.dashboard import get_risk_level
+        from app.views.dashboard import _get_risk_level_for_df
 
-        assert get_risk_level(np.nan) == 'na'
+        # The base get_risk_level doesn't handle np.nan specially,
+        # but the dashboard wrapper _get_risk_level_for_df does
+        assert _get_risk_level_for_df(np.nan) == 'na'
 
 
 class TestFormatLbs:
-    """Tests for format_lbs function."""
+    """Tests for format_lbs function (from shared formatting module)."""
 
     def test_formats_millions(self):
         """Should format millions with M suffix."""
-        from app.views.dashboard import format_lbs
+        from app.utils.formatting import format_lbs
 
         assert format_lbs(1_000_000) == '1.0M'
         assert format_lbs(2_500_000) == '2.5M'
@@ -78,7 +80,7 @@ class TestFormatLbs:
 
     def test_formats_thousands(self):
         """Should format thousands with K suffix."""
-        from app.views.dashboard import format_lbs
+        from app.utils.formatting import format_lbs
 
         assert format_lbs(1_000) == '1.0K'
         assert format_lbs(5_500) == '5.5K'
@@ -86,7 +88,7 @@ class TestFormatLbs:
 
     def test_formats_small_numbers(self):
         """Should format small numbers as-is."""
-        from app.views.dashboard import format_lbs
+        from app.utils.formatting import format_lbs
 
         assert format_lbs(0) == '0'
         assert format_lbs(500) == '500'
@@ -94,28 +96,37 @@ class TestFormatLbs:
 
 
 class TestGetPctColor:
-    """Tests for get_pct_color function."""
+    """Tests for get_pct_color function (from shared formatting module)."""
 
     def test_red_for_critical(self):
         """Should return red for <10%."""
-        from app.views.dashboard import get_pct_color
+        from app.utils.formatting import get_pct_color
 
         assert get_pct_color(5) == '#dc2626'
         assert get_pct_color(9.9) == '#dc2626'
 
     def test_amber_for_warning(self):
         """Should return amber for 10-50%."""
-        from app.views.dashboard import get_pct_color
+        from app.utils.formatting import get_pct_color
 
         assert get_pct_color(10) == '#d97706'
         assert get_pct_color(49) == '#d97706'
 
-    def test_dark_for_ok(self):
-        """Should return dark for >=50%."""
-        from app.views.dashboard import get_pct_color
+    def test_green_for_ok(self):
+        """Should return green for >=50% (standardized across views)."""
+        from app.utils.formatting import get_pct_color
 
-        assert get_pct_color(50) == '#1e293b'
-        assert get_pct_color(100) == '#1e293b'
+        # Standardized to green #059669 (was dark #1e293b in dashboard only)
+        assert get_pct_color(50) == '#059669'
+        assert get_pct_color(100) == '#059669'
+
+    def test_custom_ok_color(self):
+        """Should allow custom color for ok status (e.g., dashboard uses dark)."""
+        from app.utils.formatting import get_pct_color
+
+        # Dashboard passes ok_color="#1e293b" to preserve original appearance
+        assert get_pct_color(50, ok_color="#1e293b") == '#1e293b'
+        assert get_pct_color(100, ok_color="#1e293b") == '#1e293b'
 
 
 class TestPivotQuotaData:
@@ -440,49 +451,49 @@ class TestEdgeCases:
 
     def test_risk_level_exactly_10_percent(self):
         """Exactly 10% should be 'warning', not 'critical'."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         result = get_risk_level(10.0)
         assert result == 'warning'
 
     def test_risk_level_exactly_50_percent(self):
         """Exactly 50% should be 'ok', not 'warning'."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         result = get_risk_level(50.0)
         assert result == 'ok'
 
     def test_risk_level_just_under_10(self):
         """9.99% should still be 'critical'."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         result = get_risk_level(9.99)
         assert result == 'critical'
 
     def test_risk_level_just_under_50(self):
         """49.99% should still be 'warning'."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         result = get_risk_level(49.99)
         assert result == 'warning'
 
     def test_negative_percentage_is_critical(self):
         """Negative percentage (overdrawn) should be 'critical'."""
-        from app.views.dashboard import get_risk_level
+        from app.utils.formatting import get_risk_level
 
         result = get_risk_level(-10.0)
         assert result == 'critical'
 
     def test_negative_percentage_color(self):
         """Negative percentage should show red color."""
-        from app.views.dashboard import get_pct_color
+        from app.utils.formatting import get_pct_color
 
         result = get_pct_color(-25.0)
         assert result == '#dc2626'  # Red
 
     def test_format_lbs_negative(self):
         """Should format negative numbers correctly."""
-        from app.views.dashboard import format_lbs
+        from app.utils.formatting import format_lbs
 
         # Negative thousands
         assert format_lbs(-5000) == '-5.0K'
@@ -491,20 +502,20 @@ class TestEdgeCases:
 
     def test_format_lbs_very_large(self):
         """Should handle very large numbers."""
-        from app.views.dashboard import format_lbs
+        from app.utils.formatting import format_lbs
 
         result = format_lbs(999_999_999)
         assert 'M' in result
 
     def test_percentage_over_100(self):
         """Should handle >100% remaining (transfers in exceeded usage)."""
-        from app.views.dashboard import get_risk_level, get_pct_color
+        from app.utils.formatting import get_risk_level, get_pct_color
 
         result_level = get_risk_level(150.0)
         result_color = get_pct_color(150.0)
 
         assert result_level == 'ok'
-        assert result_color == '#1e293b'  # Dark (ok color)
+        assert result_color == '#059669'  # Green (standardized ok color)
 
     @patch('app.views.dashboard.supabase')
     def test_unknown_species_code_in_data(self, mock_supabase):

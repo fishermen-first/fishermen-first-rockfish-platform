@@ -33,29 +33,29 @@ def _get_pending_bycatch_count() -> int:
 @st.cache_data(ttl=300)
 def get_filter_options():
     """Cached: Fetch coop members for filter dropdowns."""
+    from collections import defaultdict
     from app.config import supabase
+
     response = supabase.table("coop_members").select("coop_code, vessel_name").execute()
     members_data = response.data if response.data else []
 
     # Build lookup: coop -> vessels, vessel -> coop
     all_coops = sorted(set(m["coop_code"] for m in members_data if m.get("coop_code")))
     all_vessels = sorted(set(m["vessel_name"] for m in members_data if m.get("vessel_name")))
-    coop_to_vessels = {}
+    coop_to_vessels = defaultdict(list)
     vessel_to_coop = {}
 
     for m in members_data:
         coop = m.get("coop_code")
         vessel = m.get("vessel_name")
         if coop and vessel:
-            if coop not in coop_to_vessels:
-                coop_to_vessels[coop] = []
             coop_to_vessels[coop].append(vessel)
             vessel_to_coop[vessel] = coop
 
     return {
         "all_coops": all_coops,
         "all_vessels": all_vessels,
-        "coop_to_vessels": coop_to_vessels,
+        "coop_to_vessels": dict(coop_to_vessels),
         "vessel_to_coop": vessel_to_coop,
     }
 
@@ -447,47 +447,36 @@ def show_sidebar():
 
 def show_current_page():
     """Render the currently selected page."""
+    import importlib
+
     # Apply global styling for all authenticated pages
     from app.utils.styles import apply_page_styling
     apply_page_styling()
 
     page = st.session_state.get("current_page", "dashboard")
 
-    if page == "dashboard":
-        from app.views import dashboard
-        dashboard.show()
-    elif page == "allocations":
-        from app.views import allocations
-        allocations.show()
-    elif page == "rosters":
-        from app.views import rosters
-        rosters.show()
-    elif page == "upload":
-        from app.views import upload
-        upload.show()
-    elif page == "account_balances":
-        from app.views import account_balances
-        account_balances.show()
-    elif page == "account_detail":
-        from app.views import account_detail
-        account_detail.show()
-    elif page == "transfers":
-        from app.views import transfers
-        transfers.show()
-    elif page == "processor_view":
-        from app.views import processor_view
-        processor_view.show()
-    elif page == "vessel_owner_view":
-        from app.views import vessel_owner_view
-        vessel_owner_view.show()
-    elif page == "bycatch_alerts":
-        from app.views import bycatch_alerts
-        bycatch_alerts.show()
-    elif page == "report_bycatch":
-        from app.views import report_bycatch
-        report_bycatch.show()
-    elif page is None:
+    if page is None:
         st.warning("No pages available for your role.")
+        return
+
+    # Map page keys to module names (all in app.views package)
+    page_modules = {
+        "dashboard": "dashboard",
+        "allocations": "allocations",
+        "rosters": "rosters",
+        "upload": "upload",
+        "account_balances": "account_balances",
+        "account_detail": "account_detail",
+        "transfers": "transfers",
+        "processor_view": "processor_view",
+        "vessel_owner_view": "vessel_owner_view",
+        "bycatch_alerts": "bycatch_alerts",
+        "report_bycatch": "report_bycatch",
+    }
+
+    if page in page_modules:
+        module = importlib.import_module(f"app.views.{page_modules[page]}")
+        module.show()
     else:
         st.error("Page not found.")
 

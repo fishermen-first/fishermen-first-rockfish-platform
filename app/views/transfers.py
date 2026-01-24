@@ -149,8 +149,7 @@ def insert_transfer(
     """
     try:
         # Strip whitespace and convert empty/whitespace-only to None
-        clean_notes = notes.strip() if notes else None
-        clean_notes = clean_notes if clean_notes else None
+        clean_notes = (notes.strip() or None) if notes else None
 
         record = {
             "org_id": org_id,

@@ -280,68 +280,44 @@ def parse_efish_row(
 # Lookup Table Fetchers
 # =============================================================================
 
-def fetch_vessels_lookup() -> dict[str, str]:
+def _fetch_lookup(table: str, key_column: str) -> dict:
     """
-    Fetch vessels and return dict mapping vessel_id_number to UUID.
+    Generic helper to fetch a lookup table mapping key_column -> id.
+
+    Args:
+        table: Supabase table name
+        key_column: Column to use as the key in the returned dict
 
     Returns:
-        Dict of {vessel_id_number: uuid}
+        Dict mapping key_column values to their UUIDs
     """
     try:
-        response = supabase.table("vessels").select("id, vessel_id_number").execute()
+        response = supabase.table(table).select(f"id, {key_column}").execute()
         if response.data:
-            return {v["vessel_id_number"]: v["id"] for v in response.data}
+            return {row[key_column]: row["id"] for row in response.data}
         return {}
     except Exception:
         return {}
+
+
+def fetch_vessels_lookup() -> dict[str, str]:
+    """Fetch vessels: vessel_id_number -> UUID."""
+    return _fetch_lookup("vessels", "vessel_id_number")
 
 
 def fetch_species_lookup() -> dict[str, str]:
-    """
-    Fetch species and return dict mapping species_code to UUID.
-
-    Returns:
-        Dict of {species_code: uuid}
-    """
-    try:
-        response = supabase.table("species").select("id, species_code").execute()
-        if response.data:
-            return {s["species_code"]: s["id"] for s in response.data}
-        return {}
-    except Exception:
-        return {}
+    """Fetch species: species_code -> UUID."""
+    return _fetch_lookup("species", "species_code")
 
 
 def fetch_processors_lookup() -> dict[str, str]:
-    """
-    Fetch processors and return dict mapping processor_name to UUID.
-
-    Returns:
-        Dict of {processor_name: uuid}
-    """
-    try:
-        response = supabase.table("processors").select("id, processor_name").execute()
-        if response.data:
-            return {p["processor_name"]: p["id"] for p in response.data}
-        return {}
-    except Exception:
-        return {}
+    """Fetch processors: processor_name -> UUID."""
+    return _fetch_lookup("processors", "processor_name")
 
 
 def fetch_seasons_lookup() -> dict[int, str]:
-    """
-    Fetch seasons and return dict mapping year to UUID.
-
-    Returns:
-        Dict of {year: uuid}
-    """
-    try:
-        response = supabase.table("seasons").select("id, year").execute()
-        if response.data:
-            return {s["year"]: s["id"] for s in response.data}
-        return {}
-    except Exception:
-        return {}
+    """Fetch seasons: year -> UUID."""
+    return _fetch_lookup("seasons", "year")
 
 
 def get_harvest_records(parsed_records: list[dict]) -> list[dict]:

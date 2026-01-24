@@ -200,22 +200,6 @@ def import_account_detail(df, filename):
             if isinstance(value, float) and math.isnan(value):
                 record[key] = None
 
-    # Debug: print what we're sending
-    import json
-
-    # Check for problematic values
-    for i, record in enumerate(records):
-        for key, value in record.items():
-            try:
-                json.dumps(value)
-            except (TypeError, ValueError) as e:
-                print(f"Row {i}, Column {key}: {type(value)} = {value} - ERROR: {e}")
-
-    # Also check if records is empty
-    print(f"Number of records to insert: {len(records)}")
-    if records:
-        print(f"First record: {records[0]}")
-
     # Insert into database
     try:
         if records:

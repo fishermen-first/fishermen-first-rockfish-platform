@@ -3,6 +3,7 @@
 import streamlit as st
 import pandas as pd
 from app.config import supabase
+from app.utils.formatting import format_lbs, get_pct_color, get_risk_level
 
 SPECIES_MAP = {141: 'POP', 136: 'NR', 172: 'Dusky'}
 
@@ -84,15 +85,11 @@ def pivot_quota_data(df):
     return pivot
 
 
-def get_risk_level(pct):
-    """Return risk level based on percent remaining"""
-    if pct is None or pd.isna(pct):
-        return "na"  # Not applicable - no allocation
-    if pct < 10:
-        return "critical"
-    elif pct < 50:
-        return "warning"
-    return "ok"
+def _get_risk_level_for_df(pct):
+    """Wrapper for get_risk_level that handles pandas NA values."""
+    if pd.isna(pct):
+        return "na"
+    return get_risk_level(pct)
 
 
 def add_risk_flags(df):
@@ -100,36 +97,13 @@ def add_risk_flags(df):
     for species in ["POP", "NR", "Dusky"]:
         col = f"{species}_pct_remaining"
         if col in df.columns:
-            df[f"{species}_risk"] = df[col].apply(get_risk_level)
+            df[f"{species}_risk"] = df[col].apply(_get_risk_level_for_df)
 
     # Vessel is at risk if ANY species is critical
     risk_cols = [f"{s}_risk" for s in ["POP", "NR", "Dusky"] if f"{s}_risk" in df.columns]
     df["vessel_at_risk"] = df[risk_cols].apply(lambda row: "critical" in row.values, axis=1)
 
     return df
-
-
-def format_lbs(value):
-    """Format pounds as M or K with 1 decimal"""
-    abs_value = abs(value)
-    sign = "-" if value < 0 else ""
-    if abs_value >= 1_000_000:
-        return f"{sign}{abs_value / 1_000_000:.1f}M"
-    elif abs_value >= 1_000:
-        return f"{sign}{abs_value / 1_000:.1f}K"
-    else:
-        return f"{value:.0f}"
-
-
-def get_pct_color(pct):
-    """Return color based on percent remaining"""
-    if pct is None:
-        return "#94a3b8"  # gray for N/A
-    if pct < 10:
-        return "#dc2626"  # red
-    elif pct < 50:
-        return "#d97706"  # amber
-    return "#1e293b"  # default dark
 
 
 def kpi_card(label, value, icon=None, subtitle=None):
@@ -151,7 +125,8 @@ def kpi_card(label, value, icon=None, subtitle=None):
 
 def species_kpi_card(label, pct, remaining, allocated, species_code=None):
     """Generate HTML for a species KPI card"""
-    color = get_pct_color(pct)
+    # Use dark color for "ok" status to match dashboard styling
+    color = get_pct_color(pct, ok_color="#1e293b")
     pct_display = "N/A" if pct is None else f"{pct:.0f}%"
 
     return f"""
