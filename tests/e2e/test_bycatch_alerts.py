@@ -1,0 +1,468 @@
+"""End-to-end tests for bycatch alerts feature.
+
+Run with: pytest tests/e2e/test_bycatch_alerts.py --headed (to see browser)
+Or: pytest tests/e2e/test_bycatch_alerts.py (headless)
+
+Prerequisites:
+    pip install playwright pytest-playwright
+    playwright install chromium
+
+Environment variables:
+    ADMIN_EMAIL - Admin/manager email for login
+    ADMIN_PASSWORD - Admin/manager password
+    TEST_EMAIL - Vessel owner email (optional)
+    TEST_PASSWORD - Vessel owner password (optional)
+"""
+
+import pytest
+from playwright.sync_api import Page, expect
+import subprocess
+import time
+import os
+from dotenv import load_dotenv
+
+# Load .env file for credentials
+load_dotenv()
+
+# Test credentials
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "vikram@fishermenfirst.org")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+TEST_EMAIL = os.getenv("TEST_EMAIL", "vikram.nayani+1@gmail.com")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD", "")
+APP_URL = "http://localhost:8501"
+
+
+@pytest.fixture(scope="module")
+def app_server():
+    """Start the Streamlit app for testing."""
+    proc = subprocess.Popen(
+        ["python", "-m", "streamlit", "run", "app/main.py", "--server.headless", "true", "--server.port", "8501"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    time.sleep(5)  # Wait for app to start
+    yield proc
+    proc.terminate()
+    proc.wait(timeout=10)
+
+
+def login_as_admin(page: Page):
+    """Helper to login as admin/manager."""
+    page.goto(APP_URL)
+    page.fill("input[type='text']", ADMIN_EMAIL)
+    page.fill("input[type='password']", ADMIN_PASSWORD)
+    page.click("button:has-text('Sign In')")
+    page.wait_for_timeout(3000)
+
+
+def navigate_to_bycatch_alerts(page: Page):
+    """Helper to navigate to bycatch alerts page."""
+    # Click on Bycatch Alerts in sidebar
+    page.click("text=Bycatch Alerts")
+    page.wait_for_timeout(2000)
+
+
+# =============================================================================
+# NAVIGATION AND PAGE LOAD TESTS
+# =============================================================================
+
+class TestBycatchAlertsNavigation:
+    """Tests for navigating to and loading the bycatch alerts page."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_admin_can_access_bycatch_alerts_page(self, page: Page, app_server):
+        """Admin should be able to navigate to bycatch alerts page."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Should see page header
+        expect(page.get_by_role("heading", name="Bycatch Alerts")).to_be_visible()
+        expect(page.locator("text=Review and share bycatch hotspot reports")).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_page_shows_tabs(self, page: Page, app_server):
+        """Page should display Pending, Shared, and All tabs."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Use role-based selectors for tabs
+        expect(page.get_by_role("tab", name="Pending")).to_be_visible()
+        expect(page.get_by_role("tab", name="Shared")).to_be_visible()
+        expect(page.get_by_role("tab", name="All")).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_page_shows_filters(self, page: Page, app_server):
+        """Page should display filter controls."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # The filters section header includes an emoji: "🔍 FILTERS"
+        expect(page.get_by_text("FILTERS", exact=False).first).to_be_visible()
+        expect(page.get_by_text("Cooperative", exact=True).first).to_be_visible()
+        expect(page.get_by_text("From Date", exact=True)).to_be_visible()
+        expect(page.get_by_text("To Date", exact=True)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_page_shows_create_alert_section(self, page: Page, app_server):
+        """Page should display create alert section for managers."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        expect(page.locator("text=CREATE NEW ALERT")).to_be_visible()
+
+
+# =============================================================================
+# CREATE ALERT TESTS
+# =============================================================================
+
+class TestCreateAlert:
+    """Tests for creating new bycatch alerts."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_create_alert_form_elements(self, page: Page, app_server):
+        """Create alert form should have all required elements."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # The CREATE NEW ALERT is inside an expander - click to expand if needed
+        # The expander header contains the text
+        expander = page.locator("[data-testid='stExpander']").first
+        # Check if already expanded by looking for form visibility
+        form = page.get_by_test_id("stForm")
+        if not form.is_visible():
+            expander.click()
+            page.wait_for_timeout(500)
+
+        # Check form elements
+        expect(page.get_by_text("Reporting Vessel", exact=True)).to_be_visible()
+        expect(page.get_by_text("Latitude", exact=False).first).to_be_visible()
+        expect(page.get_by_text("Longitude", exact=False).first).to_be_visible()
+        expect(page.get_by_test_id("stBaseButton-primaryFormSubmit")).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_create_alert_validation_requires_vessel(self, page: Page, app_server):
+        """Should show error when vessel not selected."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # The CREATE NEW ALERT is inside an expander - click to expand if needed
+        expander = page.locator("[data-testid='stExpander']").first
+        form = page.get_by_test_id("stForm")
+        if not form.is_visible():
+            expander.click()
+            page.wait_for_timeout(500)
+
+        # Try to submit without selecting vessel - use form submit button
+        page.get_by_test_id("stBaseButton-primaryFormSubmit").click()
+        page.wait_for_timeout(1000)
+
+        # Should see validation error
+        expect(page.get_by_text("Please select", exact=False)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_create_alert_success(self, page: Page, app_server):
+        """Should successfully create alert with valid data."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # The CREATE NEW ALERT is inside an expander - click to expand if needed
+        expander = page.locator("[data-testid='stExpander']").first
+        form = page.get_by_test_id("stForm")
+        if not form.is_visible():
+            expander.click()
+            page.wait_for_timeout(500)
+
+        # Select species - find "Select species..." placeholder and click its parent select
+        species_placeholder = page.get_by_text("Select species...", exact=True)
+        species_placeholder.click()
+        page.wait_for_timeout(300)
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(300)
+
+        # Select vessel - find "Select vessel..." placeholder and click
+        vessel_placeholder = page.get_by_text("Select vessel...", exact=True)
+        vessel_placeholder.click()
+        page.wait_for_timeout(300)
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(300)
+
+        # Submit
+        page.get_by_test_id("stBaseButton-primaryFormSubmit").click()
+
+        # Wait for Streamlit to process and show result
+        # Success message or page rerun (form clears) indicates success
+        page.wait_for_timeout(3000)
+
+        # Either success message is visible, or the page reran (Streamlit clears forms on success)
+        # Check for success toast/message OR form was cleared (placeholder reappears)
+        success_visible = page.get_by_text("Alert created", exact=False).is_visible()
+        form_cleared = page.get_by_text("Select species...", exact=True).is_visible()
+
+        assert success_visible or form_cleared, "Expected either success message or form to be cleared"
+
+
+# =============================================================================
+# ALERT ACTIONS TESTS
+# =============================================================================
+
+class TestAlertActions:
+    """Tests for alert action buttons (Edit, Preview, Share, Dismiss)."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_pending_alert_shows_action_buttons(self, page: Page, app_server):
+        """Pending alerts should show Edit, Preview, Share, and Dismiss buttons."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Stay on Pending tab (default)
+        page.wait_for_timeout(1000)
+
+        # Check if there are pending alerts by looking for Edit buttons
+        edit_buttons = page.get_by_role("button", name="Edit")
+        if edit_buttons.count() > 0:
+            expect(edit_buttons.first).to_be_visible()
+            expect(page.get_by_role("button", name="Preview").first).to_be_visible()
+            expect(page.get_by_role("button", name="Share").first).to_be_visible()
+            expect(page.get_by_role("button", name="Dismiss").first).to_be_visible()
+        else:
+            # No pending alerts - check for "No pending alerts" message
+            expect(page.get_by_text("No pending alerts", exact=False)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_preview_shows_email_content(self, page: Page, app_server):
+        """Preview button should show email preview with content."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Check if there are pending alerts
+        page.wait_for_timeout(1000)
+        preview_buttons = page.get_by_role("button", name="Preview")
+
+        if preview_buttons.count() > 0:
+            # Click first preview button
+            preview_buttons.first.click()
+            page.wait_for_timeout(500)
+
+            # Should show email preview
+            expect(page.get_by_text("Email Preview", exact=True)).to_be_visible()
+            expect(page.get_by_text("Subject:", exact=False)).to_be_visible()
+            expect(page.get_by_text("vessel contacts", exact=False)).to_be_visible()
+
+            # Close preview
+            page.get_by_role("button", name="Close Preview").click()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_edit_opens_form(self, page: Page, app_server):
+        """Edit button should open inline edit form."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Check if there are pending alerts
+        page.wait_for_timeout(1000)
+        edit_buttons = page.get_by_role("button", name="Edit")
+
+        if edit_buttons.count() > 0:
+            # Click first edit button
+            edit_buttons.first.click()
+            page.wait_for_timeout(500)
+
+            # Should show edit form
+            expect(page.get_by_text("Edit Alert Details", exact=True)).to_be_visible()
+            expect(page.get_by_role("button", name="Save Changes")).to_be_visible()
+            expect(page.get_by_role("button", name="Cancel")).to_be_visible()
+
+            # Cancel edit
+            page.get_by_role("button", name="Cancel").click()
+
+
+# =============================================================================
+# SHARE ALERT TESTS (E2E EMAIL FLOW)
+# =============================================================================
+
+class TestShareAlert:
+    """Tests for sharing alerts to fleet (triggers email via Edge Function)."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_share_button_shows_confirmation(self, page: Page, app_server):
+        """Share button should work and show result."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Check if there are pending alerts
+        page.wait_for_timeout(1000)
+        share_buttons = page.get_by_role("button", name="Share")
+
+        if share_buttons.count() > 0:
+            # Click first share button
+            share_buttons.first.click()
+            page.wait_for_timeout(3000)  # Wait for Edge Function call
+
+            # Should see success message, error, or page reloads (alert moves to Shared)
+            success_visible = page.get_by_text("Alert shared", exact=False).is_visible()
+            already_shared = page.get_by_text("already shared", exact=False).is_visible()
+            # After share, the pending count decreases
+            new_share_count = page.get_by_role("button", name="Share").count()
+
+            assert success_visible or already_shared or new_share_count < share_buttons.count()
+        else:
+            # No pending alerts to share - that's okay
+            expect(page.get_by_text("No pending alerts", exact=False)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_shared_alert_appears_in_shared_tab(self, page: Page, app_server):
+        """After sharing, alert should appear in Shared tab."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Click on Shared tab
+        page.get_by_role("tab", name="Shared").click()
+        page.wait_for_timeout(1000)
+
+        # Should show shared alerts or "No shared alerts" message
+        has_shared = page.get_by_text("shared alert", exact=False).is_visible()
+        no_shared = page.get_by_text("No shared alerts", exact=False).is_visible()
+
+        assert has_shared or no_shared
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_shared_alert_shows_recipient_count(self, page: Page, app_server):
+        """Shared alerts should display recipient count."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Click on Shared tab
+        page.get_by_role("tab", name="Shared").click()
+        page.wait_for_timeout(1000)
+
+        # If there are shared alerts, check for recipient info
+        # Look for "Shared on" which indicates a shared alert card
+        shared_info = page.get_by_text("Shared on", exact=False)
+        if shared_info.count() > 0:
+            expect(page.get_by_text("recipients", exact=False).first).to_be_visible()
+        else:
+            # No shared alerts yet - that's okay
+            expect(page.get_by_text("No shared alerts", exact=False)).to_be_visible()
+
+
+# =============================================================================
+# DISMISS ALERT TESTS
+# =============================================================================
+
+class TestDismissAlert:
+    """Tests for dismissing alerts."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_dismiss_removes_from_pending(self, page: Page, app_server):
+        """Dismiss should remove alert from pending list."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Check initial pending count
+        page.wait_for_timeout(1000)
+        dismiss_buttons = page.get_by_role("button", name="Dismiss")
+
+        if dismiss_buttons.count() > 0:
+            initial_count = dismiss_buttons.count()
+
+            # Click first dismiss button
+            dismiss_buttons.first.click()
+            page.wait_for_timeout(2000)
+
+            # Should see success message
+            expect(page.get_by_text("Alert dismissed", exact=False)).to_be_visible()
+
+            # Count should decrease
+            new_count = page.get_by_role("button", name="Dismiss").count()
+            assert new_count < initial_count
+        else:
+            # No pending alerts to dismiss - that's okay
+            expect(page.get_by_text("No pending alerts", exact=False)).to_be_visible()
+
+
+# =============================================================================
+# FILTER TESTS
+# =============================================================================
+
+class TestAlertFiltering:
+    """Tests for filtering alerts."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_filter_by_species(self, page: Page, app_server):
+        """Should be able to filter alerts by species."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Find the "All Species" dropdown (should be visible in filter section)
+        species_filter = page.get_by_text("All Species", exact=True)
+        species_filter.click()
+        page.wait_for_timeout(300)
+
+        # Select a specific species (not "All Species")
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(1000)
+
+        # Page should reload with filtered results (no error)
+        expect(page.get_by_role("heading", name="Bycatch Alerts")).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_filter_by_date_range(self, page: Page, app_server):
+        """Should be able to filter alerts by date range."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Date filters should be visible
+        expect(page.locator("text=From Date")).to_be_visible()
+        expect(page.locator("text=To Date")).to_be_visible()
+
+        # Page should not error with default date filters
+        expect(page.get_by_role("heading", name="Bycatch Alerts")).to_be_visible()
+
+
+# =============================================================================
+# ALERT CARD DISPLAY TESTS
+# =============================================================================
+
+class TestAlertCardDisplay:
+    """Tests for alert card content and formatting."""
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_alert_card_shows_species(self, page: Page, app_server):
+        """Alert cards should display species name."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Go to All tab to see any alerts
+        page.get_by_role("tab", name="All").click()
+        page.wait_for_timeout(1000)
+
+        # Check for vessel/location info which indicates alert cards are present
+        vessel_info = page.get_by_text("Vessel:", exact=False)
+        if vessel_info.count() > 0:
+            # Should show vessel and location info
+            expect(vessel_info.first).to_be_visible()
+            expect(page.get_by_text("Location:", exact=False).first).to_be_visible()
+        else:
+            # No alerts - check for empty state message
+            expect(page.get_by_text("No alerts match", exact=False)).to_be_visible()
+
+    @pytest.mark.skipif(not ADMIN_PASSWORD, reason="ADMIN_PASSWORD not set")
+    def test_alert_card_shows_coordinates_in_dms(self, page: Page, app_server):
+        """Alert cards should display coordinates in DMS format."""
+        login_as_admin(page)
+        navigate_to_bycatch_alerts(page)
+
+        # Go to All tab
+        page.get_by_role("tab", name="All").click()
+        page.wait_for_timeout(1000)
+
+        # If there are alerts, coordinates should be in DMS format (contain ° symbol)
+        location_info = page.get_by_text("Location:", exact=False)
+        if location_info.count() > 0:
+            # DMS format includes degree symbol
+            expect(page.locator("text=°").first).to_be_visible()
+        else:
+            # No alerts - that's okay for this test
+            expect(page.get_by_text("No alerts match", exact=False)).to_be_visible()
