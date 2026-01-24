@@ -1,4 +1,66 @@
 {
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/session-start.js\""
+          }
+        ],
+        "description": "Check for SESSION.md and previous context on new session"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/session-end.js\""
+          }
+        ],
+        "description": "Persist session state on end"
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/pre-compact.js\""
+          }
+        ],
+        "description": "Save state before context compaction"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/pre-push-check.js\""
+          }
+        ],
+        "description": "Reminder to run tests before pushing"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.py$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/check-python-prints.js\""
+          }
+        ],
+        "description": "Warn about print() statements in Python files"
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
@@ -10,7 +72,64 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nFoundation complete: auth, navigation, CRUD template\n\n- Add Supabase client configuration \\(app/config.py\\)\n- Add authentication module with login/logout/role checking \\(app/auth.py\\)\n- Add main entry point with sidebar navigation \\(app/main.py\\)\n- Add role-based navigation \\(admin vs co_op_manager\\)\n- Add CRUD page template for consistent admin pages \\(templates/\\)\n- Add project documentation \\(CLAUDE.md, README.md\\)\n- Add database schema \\(sql/schema.sql\\)\n- Add test connection script \\(scripts/\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(python scripts/test_storage.py:*)"
+      "Bash(python scripts/test_storage.py:*)",
+      "Bash(dir /b /s \"%USERPROFILE%\\\\.claude\")",
+      "Bash(dir /b /s \"%APPDATA%\\\\claude-code\")",
+      "Bash(findstr:*)",
+      "Bash(python:*)",
+      "Bash(pytest:*)",
+      "Bash(taskkill:*)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq *streamlit*\")",
+      "Bash(netstat:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 18392 -Force\")",
+      "Bash($env:TEST_PASSWORD:*)",
+      "Bash(TEST_PASSWORD:*)",
+      "Bash(ls:*)",
+      "Skill(frontend-design)",
+      "Bash(streamlit run:*)",
+      "Bash(timeout:*)",
+      "Bash(dir:*)",
+      "Bash(git checkout:*)",
+      "Skill(frontend-design:frontend-design)",
+      "Bash(set CLAUDE_PLUGIN_ROOT=C:Usersvikra.claudepluginscacheclaude-code-pluginshookify0.1.0:*)",
+      "Bash(echo:*)",
+      "Bash(python3:*)",
+      "Bash(wc:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Path $env:USERPROFILE\\\\.claude -Recurse -File | Select-Object FullName\")",
+      "Bash(git merge-base:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(tree:*)",
+      "Bash(TEST_PASSWORD=* pytest:*)",
+      "Skill(plugin-dev:skill-development)",
+      "Bash(gh pr view:*)",
+      "Bash(git pull:*)",
+      "Bash(powershell:*)",
+      "Bash(Select-Object FullName)",
+      "Bash(claude --restart)",
+      "Bash(copy:*)",
+      "Bash(supabase --version:*)",
+      "Bash(supabase login:*)",
+      "Bash(export SUPABASE_ACCESS_TOKEN:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase secrets set:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(ADMIN_PASSWORD=test123 pytest:*)",
+      "Bash(ADMIN_PASSWORD=* pytest:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(supabase functions list:*)",
+      "Bash(supabase functions logs:*)",
+      "Bash(npm update:*)",
+      "Bash(npm install:*)",
+      "Bash(scoop install:*)",
+      "Bash(supabase inspect --help:*)",
+      "Bash(supabase secrets:*)",
+      "Bash(gh issue close:*)",
+      "Bash(gh issue create:*)",
+      "Bash(code --install-extension:*)",
+      "Bash(code:*)",
+      "Bash(gh issue view:*)"
     ],
     "deny": [],
     "ask": []

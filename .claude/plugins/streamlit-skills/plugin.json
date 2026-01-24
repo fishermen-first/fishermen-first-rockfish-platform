@@ -1,0 +1,6 @@
+{
+  "name": "streamlit-skills",
+  "version": "1.0.0",
+  "description": "Official Streamlit development skills for AI coding assistants",
+  "source": "https://github.com/streamlit/agent-skills"
+}
