@@ -44,6 +44,7 @@ def _fetch_llp_to_vessel_map():
 def clear_transfer_cache():
     """Clear transfer-related caches after successful transfer."""
     _fetch_transfer_history.clear()
+    get_quota_remaining.clear()
 
 
 def get_llp_options() -> list[tuple[str, str]]:
@@ -67,6 +68,7 @@ def get_llp_options() -> list[tuple[str, str]]:
         return []
 
 
+@st.cache_data(ttl=30)
 def get_quota_remaining(llp: str, species_code: int, year: int = CURRENT_YEAR) -> float:
     """
     Get remaining quota for a specific LLP and species.

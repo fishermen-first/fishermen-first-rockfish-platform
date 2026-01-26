@@ -115,12 +115,14 @@ def _fetch_vessel_contacts_count(org_id: str):
 def clear_alerts_cache():
     """Clear alerts cache after modifications."""
     _fetch_alerts.clear()
+    get_pending_alert_count.clear()
 
 
 # =============================================================================
 # DATA ACCESS FUNCTIONS
 # =============================================================================
 
+@st.cache_data(ttl=60)
 def get_pending_alert_count(org_id: str) -> int:
     """
     Get count of pending bycatch alerts for sidebar badge.
@@ -808,12 +810,20 @@ def show():
             key="alert_date_to"
         )
 
-    # --- TABS ---
-    tab_pending, tab_shared, tab_resolved, tab_all = st.tabs(["Pending", "Shared", "Resolved", "All"])
+    # --- VIEW SELECTOR (conditional rendering for performance) ---
+    # Using segmented_control instead of tabs so only selected view renders
+    section_header("ALERTS", "📋")
 
-    # --- PENDING TAB ---
-    with tab_pending:
-        pending_alerts = fetch_alerts(
+    view = st.segmented_control(
+        "View",
+        options=["Pending", "Shared", "Resolved", "All"],
+        default="Pending",
+        key="alert_view_selector"
+    )
+
+    # Only fetch and render the selected view (not all 4 like tabs would)
+    if view == "Pending":
+        alerts = fetch_alerts(
             org_id,
             status="pending",
             species_code=selected_species,
@@ -822,12 +832,12 @@ def show():
             date_to=date_to
         )
 
-        if not pending_alerts:
+        if not alerts:
             st.info("No pending alerts match your filters.")
         else:
-            st.markdown(f"**{len(pending_alerts)} pending alert(s)**")
+            st.markdown(f"**{len(alerts)} pending alert(s)**")
 
-            for alert in pending_alerts:
+            for alert in alerts:
                 _render_alert_card(
                     alert,
                     species_list,
@@ -838,9 +848,8 @@ def show():
                     key_prefix="pending"
                 )
 
-    # --- SHARED TAB ---
-    with tab_shared:
-        shared_alerts = fetch_alerts(
+    elif view == "Shared":
+        alerts = fetch_alerts(
             org_id,
             status="shared",
             species_code=selected_species,
@@ -849,12 +858,12 @@ def show():
             date_to=date_to
         )
 
-        if not shared_alerts:
+        if not alerts:
             st.info("No shared alerts match your filters.")
         else:
-            st.markdown(f"**{len(shared_alerts)} shared alert(s)**")
+            st.markdown(f"**{len(alerts)} shared alert(s)**")
 
-            for alert in shared_alerts:
+            for alert in alerts:
                 _render_alert_card(
                     alert,
                     species_list,
@@ -866,9 +875,8 @@ def show():
                     key_prefix="shared"
                 )
 
-    # --- RESOLVED TAB ---
-    with tab_resolved:
-        resolved_alerts = fetch_alerts(
+    elif view == "Resolved":
+        alerts = fetch_alerts(
             org_id,
             status="resolved",
             species_code=selected_species,
@@ -877,12 +885,12 @@ def show():
             date_to=date_to
         )
 
-        if not resolved_alerts:
+        if not alerts:
             st.info("No resolved alerts match your filters.")
         else:
-            st.markdown(f"**{len(resolved_alerts)} resolved alert(s)**")
+            st.markdown(f"**{len(alerts)} resolved alert(s)**")
 
-            for alert in resolved_alerts:
+            for alert in alerts:
                 _render_alert_card(
                     alert,
                     species_list,
@@ -893,9 +901,8 @@ def show():
                     key_prefix="resolved"
                 )
 
-    # --- ALL TAB ---
-    with tab_all:
-        all_alerts = fetch_alerts(
+    elif view == "All":
+        alerts = fetch_alerts(
             org_id,
             status=None,
             species_code=selected_species,
@@ -904,12 +911,12 @@ def show():
             date_to=date_to
         )
 
-        if not all_alerts:
+        if not alerts:
             st.info("No alerts match your filters.")
         else:
-            st.markdown(f"**{len(all_alerts)} total alert(s)**")
+            st.markdown(f"**{len(alerts)} total alert(s)**")
 
-            for alert in all_alerts:
+            for alert in alerts:
                 show_actions = alert["status"] == "pending"
                 _render_alert_card(
                     alert,

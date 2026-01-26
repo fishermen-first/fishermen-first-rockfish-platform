@@ -12,6 +12,12 @@ def reload_transfers():
     """Reload transfers module before each test to ensure clean state."""
     import app.views.transfers
     importlib.reload(app.views.transfers)
+    # Clear any cached values from previous tests
+    from app.views.transfers import get_quota_remaining, _fetch_transfer_history, _fetch_coop_members_for_dropdown, _fetch_llp_to_vessel_map
+    get_quota_remaining.clear()
+    _fetch_transfer_history.clear()
+    _fetch_coop_members_for_dropdown.clear()
+    _fetch_llp_to_vessel_map.clear()
 
 
 class TestGetQuotaRemaining:
