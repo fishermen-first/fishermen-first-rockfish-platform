@@ -1,5 +1,6 @@
 // Edge Function: Send bycatch alert emails via Resend
 // Invoked from Python when manager clicks "Share to Fleet"
+// Updated to support multi-haul alerts
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -25,6 +26,31 @@ interface BycatchAlert {
   status: string
   created_at: string
   shared_at: string | null
+}
+
+interface BycatchHaul {
+  id: string
+  haul_number: number
+  location_name: string | null
+  high_salmon_encounter: boolean
+  set_date: string
+  set_time: string | null
+  set_latitude: number
+  set_longitude: number
+  retrieval_date: string | null
+  retrieval_time: string | null
+  retrieval_latitude: number | null
+  retrieval_longitude: number | null
+  bottom_depth: number | null
+  sea_depth: number | null
+  rpca_area_id: number | null
+  amount: number
+}
+
+interface RpcaArea {
+  id: number
+  code: string
+  name: string
 }
 
 interface VesselContact {
@@ -69,49 +95,95 @@ function formatTimestamp(isoString: string): string {
   }) + ' AKT'
 }
 
-// Build HTML email content
+// Build hauls table HTML
+function buildHaulsTableHTML(hauls: BycatchHaul[], rpcaLookup: Map<number, string>): string {
+  if (!hauls || hauls.length === 0) {
+    return ''
+  }
+
+  const rows = hauls.map(haul => {
+    const salmonBadge = haul.high_salmon_encounter
+      ? '<span style="color: #f59e0b; font-weight: bold;">⚠️</span>'
+      : ''
+    const location = haul.location_name || '-'
+    const rpca = haul.rpca_area_id ? (rpcaLookup.get(haul.rpca_area_id) || '-') : '-'
+    const coords = formatCoordinatesDMS(haul.set_latitude, haul.set_longitude)
+    const depth = haul.bottom_depth ? `${haul.bottom_depth} fm` : '-'
+    const setDateTime = haul.set_date + (haul.set_time ? ` ${haul.set_time.substring(0, 5)}` : '')
+
+    const rowStyle = haul.high_salmon_encounter
+      ? 'background: #fef3c7;'
+      : ''
+
+    return `
+      <tr style="${rowStyle}">
+        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">
+          ${haul.haul_number} ${salmonBadge}
+        </td>
+        <td style="padding: 8px; border: 1px solid #e2e8f0;">${location}</td>
+        <td style="padding: 8px; border: 1px solid #e2e8f0;">${setDateTime}</td>
+        <td style="padding: 8px; border: 1px solid #e2e8f0;">${coords}</td>
+        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${depth}</td>
+        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${rpca}</td>
+        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">${haul.amount.toLocaleString()}</td>
+      </tr>
+    `
+  }).join('')
+
+  return `
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 16px;">
+      <thead>
+        <tr style="background: #1e3a5f; color: white;">
+          <th style="padding: 10px 8px; text-align: center;">Haul</th>
+          <th style="padding: 10px 8px; text-align: left;">Location</th>
+          <th style="padding: 10px 8px; text-align: left;">Set Date/Time</th>
+          <th style="padding: 10px 8px; text-align: left;">Coordinates</th>
+          <th style="padding: 10px 8px; text-align: center;">Depth</th>
+          <th style="padding: 10px 8px; text-align: center;">RPCA</th>
+          <th style="padding: 10px 8px; text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `
+}
+
+// Build HTML email content with hauls support
 function buildEmailHTML(
   alert: BycatchAlert,
+  hauls: BycatchHaul[],
+  rpcaLookup: Map<number, string>,
   speciesName: string,
   vesselName: string
 ): string {
-  const coords = formatCoordinatesDMS(alert.latitude, alert.longitude)
   const timestamp = formatTimestamp(alert.created_at)
+
+  // Calculate totals from hauls if available
+  const totalAmount = hauls.length > 0
+    ? hauls.reduce((sum, h) => sum + h.amount, 0)
+    : alert.amount
+
+  const hasHighSalmon = hauls.some(h => h.high_salmon_encounter)
+  const haulCount = hauls.length || 1
+
   const amountDisplay = alert.unit === 'count'
-    ? `${alert.amount.toLocaleString()} fish`
-    : `${alert.amount.toLocaleString()} lbs`
+    ? `${totalAmount.toLocaleString()} fish`
+    : `${totalAmount.toLocaleString()} lbs`
 
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e3a5f; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: #1e3a5f; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-    <h1 style="margin: 0; font-size: 24px;">⚠️ Bycatch Alert</h1>
-    <p style="margin: 8px 0 0 0; opacity: 0.9;">${speciesName} reported in your area</p>
-  </div>
+  const salmonWarning = hasHighSalmon
+    ? '<span style="color: #f59e0b; font-weight: bold;"> | HIGH SALMON ENCOUNTER</span>'
+    : ''
 
-  <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-top: none;">
-    <table style="width: 100%; border-collapse: collapse;">
-      <tr>
-        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          <strong>Species:</strong>
-        </td>
-        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          ${speciesName}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          <strong>Amount:</strong>
-        </td>
-        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          ${amountDisplay}
-        </td>
-      </tr>
+  // Build hauls table or legacy single location
+  let locationSection = ''
+  if (hauls.length > 0) {
+    locationSection = buildHaulsTableHTML(hauls, rpcaLookup)
+  } else {
+    // Legacy single location
+    const coords = formatCoordinatesDMS(alert.latitude, alert.longitude)
+    locationSection = `
       <tr>
         <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
           <strong>Location:</strong>
@@ -120,28 +192,47 @@ function buildEmailHTML(
           ${coords}
         </td>
       </tr>
-      <tr>
-        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          <strong>Reported by:</strong>
-        </td>
-        <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-          ${vesselName} (${alert.reported_by_llp})
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0;">
-          <strong>Time:</strong>
-        </td>
-        <td style="padding: 8px 0;">
-          ${timestamp}
-        </td>
-      </tr>
+    `
+  }
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e3a5f; max-width: 700px; margin: 0 auto; padding: 20px;">
+  <div style="background: #1e3a5f; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">⚠️ Bycatch Alert - ${speciesName}</h1>
+    <p style="margin: 8px 0 0 0; opacity: 0.9;">
+      ${haulCount} haul(s) reported by ${vesselName}${salmonWarning}
+    </p>
+  </div>
+
+  <div style="background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-top: none;">
+    <div style="margin-bottom: 16px;">
+      <strong>Total Amount:</strong> ${amountDisplay} |
+      <strong>Reported:</strong> ${timestamp} |
+      <strong>Vessel:</strong> ${vesselName} (${alert.reported_by_llp})
+    </div>
+
+    ${hauls.length > 0 ? locationSection : `
+    <table style="width: 100%; border-collapse: collapse;">
+      ${locationSection}
     </table>
+    `}
 
     ${alert.details ? `
     <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 4px; border-left: 3px solid #1e3a5f;">
       <strong>Details:</strong><br>
       ${alert.details}
+    </div>
+    ` : ''}
+
+    ${hasHighSalmon ? `
+    <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 4px; border-left: 3px solid #f59e0b;">
+      <strong>⚠️ Note:</strong> One or more hauls flagged for high salmon encounter.
     </div>
     ` : ''}
   </div>
@@ -154,26 +245,58 @@ function buildEmailHTML(
 `
 }
 
-// Build plain text email content
+// Build plain text email content with hauls support
 function buildEmailText(
   alert: BycatchAlert,
+  hauls: BycatchHaul[],
+  rpcaLookup: Map<number, string>,
   speciesName: string,
   vesselName: string
 ): string {
-  const coords = formatCoordinatesDMS(alert.latitude, alert.longitude)
   const timestamp = formatTimestamp(alert.created_at)
-  const amountDisplay = alert.unit === 'count'
-    ? `${alert.amount.toLocaleString()} fish`
-    : `${alert.amount.toLocaleString()} lbs`
 
-  let text = `BYCATCH ALERT - ${speciesName}
+  const totalAmount = hauls.length > 0
+    ? hauls.reduce((sum, h) => sum + h.amount, 0)
+    : alert.amount
+
+  const hasHighSalmon = hauls.some(h => h.high_salmon_encounter)
+
+  const amountDisplay = alert.unit === 'count'
+    ? `${totalAmount.toLocaleString()} fish`
+    : `${totalAmount.toLocaleString()} lbs`
+
+  let text = `BYCATCH ALERT - ${speciesName}${hasHighSalmon ? ' [HIGH SALMON]' : ''}
 
 Species: ${speciesName}
-Amount: ${amountDisplay}
-Location: ${coords}
+Total Amount: ${amountDisplay}
 Reported by: ${vesselName} (${alert.reported_by_llp})
 Time: ${timestamp}
 `
+
+  if (hauls.length > 0) {
+    text += `\n${hauls.length} HAUL(S):\n`
+    for (const haul of hauls) {
+      const salmonFlag = haul.high_salmon_encounter ? ' [HIGH SALMON]' : ''
+      const location = haul.location_name || 'Unknown'
+      const rpca = haul.rpca_area_id ? (rpcaLookup.get(haul.rpca_area_id) || '-') : '-'
+      const coords = formatCoordinatesDMS(haul.set_latitude, haul.set_longitude)
+      const depth = haul.bottom_depth ? `${haul.bottom_depth} fathoms` : '-'
+
+      text += `
+Haul ${haul.haul_number}${salmonFlag}:
+  Location: ${location}
+  Coordinates: ${coords}
+  Set: ${haul.set_date}${haul.set_time ? ' ' + haul.set_time.substring(0, 5) : ''}
+  Depth: ${depth}
+  RPCA: ${rpca}
+  Amount: ${haul.amount.toLocaleString()}
+`
+    }
+  } else {
+    // Legacy single location
+    const coords = formatCoordinatesDMS(alert.latitude, alert.longitude)
+    text += `Location: ${coords}\n`
+  }
 
   if (alert.details) {
     text += `\nDetails: ${alert.details}\n`
@@ -238,8 +361,29 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Note: Idempotency is handled by the Python caller which checks status before calling.
-    // The status will already be 'shared' when this function is invoked.
+    // Fetch hauls for this alert
+    const { data: hauls, error: haulsError } = await supabase
+      .from('bycatch_hauls')
+      .select('*')
+      .eq('alert_id', alert_id)
+      .order('haul_number')
+
+    if (haulsError) {
+      console.error('Hauls fetch error:', haulsError)
+      // Continue without hauls (backwards compatibility)
+    }
+
+    // Fetch RPCA areas for lookup
+    const { data: rpcaAreas } = await supabase
+      .from('rpca_areas')
+      .select('id, code, name')
+
+    const rpcaLookup = new Map<number, string>()
+    if (rpcaAreas) {
+      for (const area of rpcaAreas) {
+        rpcaLookup.set(area.id, area.code)
+      }
+    }
 
     // Fetch species name
     const { data: species } = await supabase
@@ -291,10 +435,13 @@ Deno.serve(async (req) => {
       console.warn(`Warning: ${contacts.length} recipients approaches daily limit`)
     }
 
+    // Check for high salmon encounter
+    const hasHighSalmon = hauls?.some(h => h.high_salmon_encounter) || false
+
     // Build email content
-    const subject = `Bycatch Alert - ${speciesName} Reported`
-    const htmlContent = buildEmailHTML(alert, speciesName, vesselName)
-    const textContent = buildEmailText(alert, speciesName, vesselName)
+    const subject = `Bycatch Alert - ${speciesName}${hasHighSalmon ? ' [HIGH SALMON]' : ''}`
+    const htmlContent = buildEmailHTML(alert, hauls || [], rpcaLookup, speciesName, vesselName)
+    const textContent = buildEmailText(alert, hauls || [], rpcaLookup, speciesName, vesselName)
     const recipientEmails = contacts.map(c => c.email)
 
     // Send via Resend (batch to all recipients)
@@ -318,9 +465,11 @@ Deno.serve(async (req) => {
     // Log the attempt
     await supabase.from('alert_email_log').insert({
       alert_id: alert_id,
+      org_id: alert.org_id,
       recipient_count: contacts.length,
-      status: resendResponse.ok ? 'sent' : 'failed',
-      error_message: resendResponse.ok ? null : JSON.stringify(resendResult)
+      status: resendResponse.ok ? 'success' : 'failed',
+      error_message: resendResponse.ok ? null : JSON.stringify(resendResult),
+      resend_response: resendResult
     })
 
     if (!resendResponse.ok) {
@@ -334,12 +483,13 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log(`Successfully sent alert ${alert_id} to ${contacts.length} recipients`)
+    console.log(`Successfully sent alert ${alert_id} to ${contacts.length} recipients (${hauls?.length || 0} hauls)`)
 
     return new Response(
       JSON.stringify({
         success: true,
         sent_count: contacts.length,
+        haul_count: hauls?.length || 0,
         resend_id: resendResult.id
       }),
       { headers: { 'Content-Type': 'application/json' } }

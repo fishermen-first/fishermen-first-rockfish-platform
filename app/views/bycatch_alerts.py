@@ -7,7 +7,14 @@ from zoneinfo import ZoneInfo
 from app.config import supabase
 from app.utils.styles import page_header, section_header, NAVY, GRAY_TEXT
 from app.utils.coordinates import format_coordinates_dms
-from app.components.coordinate_input import render_coordinate_inputs
+from app.components.coordinate_input import (
+    render_coordinate_inputs,
+    render_coordinate_format_toggle
+)
+from app.components.haul_form import (
+    render_multi_haul_section,
+    validate_haul_data
+)
 
 # Brand colors for create alert section
 TEAL = "#0d9488"
@@ -110,6 +117,37 @@ def _fetch_vessel_contacts_count(org_id: str):
         "id", count="exact"
     ).eq("org_id", org_id).eq("is_deleted", False).execute()
     return response.count if response.count else 0
+
+
+@st.cache_data(ttl=300)
+def _fetch_rpca_areas():
+    """Cached: Fetch RPCA areas for dropdown."""
+    response = supabase.table("rpca_areas").select(
+        "id, code, name"
+    ).order("code").execute()
+    return response.data if response.data else []
+
+
+def fetch_hauls_for_alert(alert_id: str) -> list[dict]:
+    """
+    Fetch all hauls for a specific alert.
+
+    Args:
+        alert_id: Alert UUID
+
+    Returns:
+        List of haul records ordered by haul_number
+    """
+    try:
+        response = supabase.table("bycatch_hauls").select(
+            "id, alert_id, haul_number, location_name, high_salmon_encounter, "
+            "set_date, set_time, set_latitude, set_longitude, "
+            "retrieval_date, retrieval_time, retrieval_latitude, retrieval_longitude, "
+            "bottom_depth, sea_depth, rpca_area_id, amount, created_at"
+        ).eq("alert_id", alert_id).order("haul_number").execute()
+        return response.data if response.data else []
+    except Exception:
+        return []
 
 
 def clear_alerts_cache():
@@ -503,29 +541,151 @@ def create_alert(
         return False, str(e)
 
 
-def generate_email_preview(alert: dict, species_list: list[dict]) -> dict:
+def create_alert_with_hauls(
+    llp: str,
+    species_code: int,
+    hauls: list[dict],
+    details: str | None,
+    user_id: str,
+    org_id: str
+) -> tuple[bool, str | None]:
+    """
+    Create a new bycatch alert with multiple hauls.
+
+    Args:
+        llp: Vessel LLP identifier
+        species_code: PSC species code
+        hauls: List of haul data dicts from render_multi_haul_section
+        details: Optional details/notes
+        user_id: ID of user creating the alert
+        org_id: Organization ID
+
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        if not hauls:
+            return False, "At least one haul is required"
+
+        # Validate all hauls first
+        for haul in hauls:
+            valid, error = validate_haul_data(haul)
+            if not valid:
+                return False, f"Haul {haul.get('haul_number', '?')}: {error}"
+
+        first_haul = hauls[0]
+        total_amount = sum(h["amount"] for h in hauls)
+
+        # Create parent alert with legacy columns for backwards compatibility
+        alert_response = supabase.table("bycatch_alerts").insert({
+            "org_id": org_id,
+            "reported_by_llp": llp,
+            "species_code": species_code,
+            "latitude": first_haul["set_latitude"],
+            "longitude": first_haul["set_longitude"],
+            "amount": total_amount,
+            "details": details.strip() if details else None,
+            "status": "pending",
+            "created_by": user_id,
+            "is_deleted": False
+        }).execute()
+
+        if not alert_response.data:
+            return False, "Failed to create alert"
+
+        alert_id = alert_response.data[0]["id"]
+
+        # Create hauls
+        haul_records = []
+        for i, haul in enumerate(hauls, 1):
+            record = {
+                "alert_id": alert_id,
+                "haul_number": i,
+                "location_name": haul.get("location_name"),
+                "high_salmon_encounter": haul.get("high_salmon_encounter", False),
+                "set_date": haul["set_date"].isoformat() if haul.get("set_date") else None,
+                "set_time": haul["set_time"].isoformat() if haul.get("set_time") else None,
+                "set_latitude": haul["set_latitude"],
+                "set_longitude": haul["set_longitude"],
+                "retrieval_date": haul["retrieval_date"].isoformat() if haul.get("retrieval_date") else None,
+                "retrieval_time": haul["retrieval_time"].isoformat() if haul.get("retrieval_time") else None,
+                "retrieval_latitude": haul.get("retrieval_latitude"),
+                "retrieval_longitude": haul.get("retrieval_longitude"),
+                "bottom_depth": haul.get("bottom_depth"),
+                "sea_depth": haul.get("sea_depth"),
+                "rpca_area_id": haul.get("rpca_area_id"),
+                "amount": haul["amount"]
+            }
+            haul_records.append(record)
+
+        haul_response = supabase.table("bycatch_hauls").insert(haul_records).execute()
+
+        if not haul_response.data:
+            # Rollback: soft delete the alert
+            supabase.table("bycatch_alerts").update({
+                "is_deleted": True
+            }).eq("id", alert_id).execute()
+            return False, "Failed to create hauls"
+
+        clear_alerts_cache()
+        return True, None
+
+    except Exception as e:
+        return False, str(e)
+
+
+def generate_email_preview(alert: dict, species_list: list[dict], hauls: list[dict] | None = None) -> dict:
     """
     Generate email preview content for an alert.
 
     Args:
         alert: Alert record
         species_list: List of species for name lookup
+        hauls: Optional list of haul records
 
     Returns:
         Dict with 'subject' and 'body' keys
     """
     species_name = get_species_name(alert["species_code"], species_list)
 
+    # Calculate total from hauls if available
+    if hauls:
+        total_amount = sum(h.get("amount", 0) for h in hauls)
+        has_salmon = any(h.get("high_salmon_encounter") for h in hauls)
+    else:
+        total_amount = alert['amount']
+        has_salmon = False
+
     subject = f"Bycatch Alert - {species_name} Reported"
+    if has_salmon:
+        subject += " [HIGH SALMON]"
 
     body_parts = [
         f"**Species:** {species_name}",
-        f"**Amount:** {alert['amount']:,.0f}",
-        f"**Location:** {alert['latitude']:.4f}N, {abs(alert['longitude']):.4f}W",
+        f"**Total Amount:** {total_amount:,.0f}",
         f"**Reported:** {format_timestamp(alert['created_at'])}",
     ]
 
+    # Add haul details if available
+    if hauls:
+        body_parts.append("")
+        body_parts.append(f"**{len(hauls)} Haul(s):**")
+        rpca_areas = _fetch_rpca_areas()
+        rpca_lookup = {a["id"]: a["code"] for a in rpca_areas}
+
+        for haul in hauls:
+            salmon_flag = " [HIGH SALMON]" if haul.get("high_salmon_encounter") else ""
+            location = haul.get("location_name") or "Unknown"
+            rpca = rpca_lookup.get(haul.get("rpca_area_id"), "-")
+            coords = format_coordinates(haul["set_latitude"], haul["set_longitude"])
+
+            body_parts.append(f"- Haul {haul['haul_number']}{salmon_flag}: {location}, {coords}, {haul.get('amount', 0):,.0f}, RPCA: {rpca}")
+    else:
+        # Legacy single location
+        body_parts.append(f"**Location:** {alert['latitude']:.4f}N, {abs(alert['longitude']):.4f}W")
+
     if alert.get("details"):
+        body_parts.append("")
         body_parts.append(f"**Details:** {alert['details']}")
 
     body = "\n".join(body_parts)
@@ -616,7 +776,7 @@ def _render_create_alert_section(
     user_id: str,
     org_id: str
 ):
-    """Render styled create alert section with form."""
+    """Render styled create alert section with multi-haul support."""
 
     # Build vessel options: "F/V Name (LLP-XXXXX)"
     vessel_options = {}
@@ -641,61 +801,64 @@ def _render_create_alert_section(
         st.warning("No PSC species configured.")
         return
 
+    # Fetch RPCA areas for haul forms
+    rpca_areas = _fetch_rpca_areas()
+
     # Styled container
     with st.expander("CREATE NEW ALERT", expanded=True, icon=":material/pin_drop:"):
         st.caption("Report a bycatch hotspot on behalf of a vessel (e.g., from radio call)")
 
-        # Species selector OUTSIDE form for dynamic label updates
-        selected_species = st.selectbox(
-            "Species",
-            options=list(species_info.keys()),
-            index=None,
-            placeholder="Select species...",
-            key="create_species_select"
-        )
+        # Row 1: Vessel and Species selectors
+        col_vessel, col_species = st.columns(2)
 
-        # Determine unit based on selected species
-        if selected_species:
-            unit = species_info[selected_species]["unit"]
-            amount_label = "Count (number of fish)" if unit == "count" else "Amount (lbs)"
-        else:
-            unit = "lbs"
-            amount_label = "Amount (lbs)"
-
-        with st.form("create_alert_form", clear_on_submit=True):
-            # Vessel selector
+        with col_vessel:
             selected_vessel = st.selectbox(
                 "Reporting Vessel",
                 options=list(vessel_options.keys()),
                 index=None,
                 placeholder="Select vessel...",
-                key="create_vessel"
+                key="create_vessel_select"
             )
 
-            # Coordinate input using shared component
-            latitude, longitude = render_coordinate_inputs(
-                lat_key_prefix="create_",
-                lon_key_prefix="create_"
+        with col_species:
+            selected_species = st.selectbox(
+                "Species",
+                options=list(species_info.keys()),
+                index=None,
+                placeholder="Select species...",
+                key="create_species_select"
             )
 
-            # Amount with dynamic label
-            amount = st.number_input(
-                amount_label,
-                min_value=1.0,
-                value=100.0,
-                step=10.0 if unit == "lbs" else 1.0,
-                key="create_amount"
-            )
+        # Determine unit based on selected species
+        if selected_species:
+            unit = species_info[selected_species]["unit"]
+            amount_unit = "count" if unit == "count" else "lbs"
+        else:
+            amount_unit = "lbs"
 
-            # Details
+        # Coordinate format toggle
+        use_dms = render_coordinate_format_toggle(key="create_coord_format")
+
+        st.markdown("---")
+        st.markdown("### Haul Details")
+
+        # Multi-haul section (outside form for dynamic add/remove)
+        haul_data_list = render_multi_haul_section(
+            key_prefix="create",
+            rpca_areas=rpca_areas,
+            use_dms_format=use_dms,
+            amount_unit=amount_unit
+        )
+
+        # Details and submit in a form
+        with st.form("create_alert_form", clear_on_submit=False):
             details = st.text_area(
-                "Details (optional)",
-                placeholder="e.g., High concentration at 50 fathoms, moving NE...",
+                "Additional Details (optional)",
+                placeholder="e.g., High concentration observed, moving NE...",
                 max_chars=1000,
                 key="create_details"
             )
 
-            # Submit button
             submitted = st.form_submit_button(
                 "Submit Alert",
                 type="primary",
@@ -709,24 +872,26 @@ def _render_create_alert_section(
                     st.error("Please select a reporting vessel.")
                 elif not selected_species:
                     st.error("Please select a species.")
+                elif not haul_data_list:
+                    st.error("At least one haul is required.")
                 else:
                     llp = vessel_options[selected_vessel]
                     species_code = species_info[selected_species]["code"]
 
-                    success, error = create_alert(
+                    success, error = create_alert_with_hauls(
                         llp=llp,
                         species_code=species_code,
-                        latitude=latitude,
-                        longitude=longitude,
-                        amount=amount,
-                        unit=unit,
+                        hauls=haul_data_list,
                         details=details,
                         user_id=user_id,
                         org_id=org_id
                     )
 
                     if success:
-                        st.success(f"Alert created for {selected_vessel}!")
+                        # Clear session state for hauls
+                        if "create_haul_numbers" in st.session_state:
+                            del st.session_state["create_haul_numbers"]
+                        st.success(f"Alert created for {selected_vessel} with {len(haul_data_list)} haul(s)!")
                         st.rerun()
                     else:
                         st.error(f"Failed to create alert: {error}")
@@ -929,6 +1094,48 @@ def show():
                 )
 
 
+def _render_hauls_summary(hauls: list[dict], rpca_areas: list[dict]):
+    """Render a summary of hauls for an alert."""
+    if not hauls:
+        return
+
+    # Build RPCA lookup
+    rpca_lookup = {a["id"]: a["code"] for a in rpca_areas}
+
+    total_amount = sum(h.get("amount", 0) for h in hauls)
+    has_salmon_flag = any(h.get("high_salmon_encounter") for h in hauls)
+
+    st.markdown(f"**{len(hauls)} Haul(s)** | Total: {total_amount:,.0f}" +
+                (" | **High Salmon Encounter**" if has_salmon_flag else ""))
+
+    with st.expander("View Haul Details", expanded=False):
+        for haul in hauls:
+            salmon_badge = " **[HIGH SALMON]**" if haul.get("high_salmon_encounter") else ""
+            location = haul.get("location_name") or "Unknown"
+            rpca = rpca_lookup.get(haul.get("rpca_area_id"), "-")
+
+            set_coords = format_coordinates(haul["set_latitude"], haul["set_longitude"])
+            set_date = haul.get("set_date", "")
+            set_time = haul.get("set_time", "")
+
+            st.markdown(f"""
+            **Haul {haul['haul_number']}**{salmon_badge}
+            - Location: {location} | RPCA: {rpca}
+            - Set: {set_date} {set_time or ''} at {set_coords}
+            - Depths: Bottom {haul.get('bottom_depth') or '-'} fm, Sea {haul.get('sea_depth') or '-'} fm
+            - Amount: {haul.get('amount', 0):,.0f}
+            """)
+
+            if haul.get("retrieval_date"):
+                ret_coords = ""
+                if haul.get("retrieval_latitude") and haul.get("retrieval_longitude"):
+                    ret_coords = format_coordinates(haul["retrieval_latitude"], haul["retrieval_longitude"])
+                st.markdown(f"- Retrieval: {haul.get('retrieval_date')} {haul.get('retrieval_time') or ''}" +
+                            (f" at {ret_coords}" if ret_coords else ""))
+
+            st.markdown("---")
+
+
 def _render_alert_card(
     alert: dict,
     species_list: list[dict],
@@ -947,6 +1154,10 @@ def _render_alert_card(
     vessel_name = get_vessel_name(alert["reported_by_llp"], members)
     coords = format_coordinates(alert["latitude"], alert["longitude"])
     timestamp = format_timestamp(alert["created_at"])
+
+    # Fetch hauls for this alert
+    hauls = fetch_hauls_for_alert(alert["id"])
+    rpca_areas = _fetch_rpca_areas()
 
     status_badges = {
         "pending": "🟡 Pending",
@@ -976,6 +1187,10 @@ def _render_alert_card(
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        # Hauls summary
+        if hauls:
+            _render_hauls_summary(hauls, rpca_areas)
 
         # Details if present
         if alert.get("details"):
@@ -1136,7 +1351,9 @@ def _render_email_preview(alert: dict, species_list: list[dict], org_id: str, ke
     """Render email preview for an alert."""
     key_base = f"{key_prefix}_{alert['id']}" if key_prefix else alert['id']
 
-    preview = generate_email_preview(alert, species_list)
+    # Fetch hauls for this alert
+    hauls = fetch_hauls_for_alert(alert["id"])
+    preview = generate_email_preview(alert, species_list, hauls)
     recipient_count = get_recipient_count(org_id)
 
     with st.expander("Email Preview", expanded=True):

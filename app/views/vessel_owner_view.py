@@ -2,11 +2,9 @@
 
 import streamlit as st
 import pandas as pd
-from app.config import supabase
+from app.config import supabase, CURRENT_YEAR
 from app.auth import require_auth, is_vessel_owner, get_user_llp
 from app.utils.formatting import format_lbs, get_pct_color
-
-CURRENT_YEAR = 2026
 SPECIES_MAP = {141: "POP", 136: "NR", 172: "Dusky"}
 
 

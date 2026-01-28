@@ -19,3 +19,14 @@ def get_supabase_client() -> Client:
 
 
 supabase: Client = get_supabase_client()
+
+# =============================================================================
+# APPLICATION CONSTANTS
+# =============================================================================
+
+# Current fishing season year
+CURRENT_YEAR = 2026
+
+# Metric ton conversion factor (for e-fish reconciliation)
+# 1 metric ton = 2,204.62 pounds
+LBS_PER_MT = 2204.62

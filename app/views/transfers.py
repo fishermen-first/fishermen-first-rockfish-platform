@@ -3,17 +3,26 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from app.config import supabase
+from app.config import supabase, CURRENT_YEAR, LBS_PER_MT
 from app.auth import require_role
 
-# Species mapping for target species only (non-PSC)
+# Species mapping for transferable species (target + secondary)
 SPECIES_OPTIONS = {
     141: "POP (Pacific Ocean Perch)",
     136: "NR (Northern Rockfish)",
-    172: "Dusky (Dusky Rockfish)"
+    172: "Dusky (Dusky Rockfish)",
+    # Secondary species (added per Chelsea/Danielle client meeting)
+    137: "Shortraker (Shortraker Rockfish)",
+    138: "Rougheye (Rougheye Rockfish)",
+    143: "Thornyhead (Shortspine Thornyhead)",
+    200: "Halibut (Pacific Halibut)"
 }
 
-CURRENT_YEAR = 2026
+
+def format_with_mt(pounds: float) -> str:
+    """Format pounds with metric ton equivalent for e-fish reconciliation."""
+    mt = pounds / LBS_PER_MT
+    return f"{pounds:,.0f} lbs ({mt:,.2f} MT)"
 
 
 @st.cache_data(ttl=300)
@@ -115,9 +124,17 @@ def get_transfer_history(year: int = CURRENT_YEAR) -> pd.DataFrame:
             df["from_vessel"] = df["from_llp"].map(llp_to_vessel)
             df["to_vessel"] = df["to_llp"].map(llp_to_vessel)
 
-        # Map species codes to names
-        species_map = {141: "POP", 136: "NR", 172: "Dusky"}
-        df["species"] = df["species_code"].map(species_map)
+        # Map species codes to short names
+        species_map = {
+            141: "POP",
+            136: "NR",
+            172: "Dusky",
+            137: "Shortraker",
+            138: "Rougheye",
+            143: "Thornyhead",
+            200: "Halibut"
+        }
+        df["species"] = df["species_code"].map(species_map).fillna("Unknown")
 
         return df
     except Exception as e:
@@ -239,6 +256,9 @@ def show():
             step=100.0,
             key="pounds_input"
         )
+        # Show MT equivalent for e-fish reconciliation
+        mt_equivalent = pounds / LBS_PER_MT
+        st.caption(f"= {mt_equivalent:,.2f} MT")
 
     # Show available quota for BOTH vessels (updates immediately on selection change)
     if from_llp_display and to_llp_display and species_display_selected:
@@ -252,9 +272,9 @@ def show():
 
         col_from, col_to = st.columns(2)
         with col_from:
-            st.info(f"**{from_llp}** has **{from_available:,.0f} lbs** {species_short}")
+            st.info(f"**{from_llp}** has **{format_with_mt(from_available)}** {species_short}")
         with col_to:
-            st.info(f"**{to_llp}** has **{to_available:,.0f} lbs** {species_short}")
+            st.info(f"**{to_llp}** has **{format_with_mt(to_available)}** {species_short}")
 
     # Form for notes and submit only
     with st.form("transfer_form", clear_on_submit=True):
@@ -333,11 +353,14 @@ def show():
     if history_df.empty:
         st.info(f"No transfers recorded for {CURRENT_YEAR}.")
     else:
-        # Prepare display columns
+        # Prepare display columns with MT conversion
         display_df = history_df[[
             "transfer_date", "from_llp", "from_vessel",
             "to_llp", "to_vessel", "species", "pounds", "notes"
         ]].copy()
+
+        # Add MT column for e-fish reconciliation
+        display_df["mt"] = display_df["pounds"] / LBS_PER_MT
 
         display_df = display_df.rename(columns={
             "transfer_date": "Date",
@@ -347,12 +370,14 @@ def show():
             "to_vessel": "To Vessel",
             "species": "Species",
             "pounds": "Pounds",
+            "mt": "MT",
             "notes": "Notes"
         })
 
         # Format and display
         styled_df = display_df.style.format({
-            "Pounds": "{:,.0f}"
+            "Pounds": "{:,.0f}",
+            "MT": "{:,.2f}"
         })
 
         st.dataframe(styled_df, use_container_width=True, hide_index=True)

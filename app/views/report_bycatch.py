@@ -1,11 +1,12 @@
-"""Report Bycatch Hotspot - Vessel owner form to report bycatch encounters."""
+"""Report Bycatch Hotspot - Vessel owner form to report bycatch encounters with multi-haul support."""
 
 import streamlit as st
 from datetime import datetime
 from app.config import supabase
 from app.auth import require_role
 from app.utils.coordinates import format_coordinates_dms
-from app.components.coordinate_input import render_coordinate_inputs
+from app.components.coordinate_input import render_coordinate_format_toggle
+from app.components.haul_form import render_multi_haul_section, validate_haul_data
 
 
 @st.cache_data(ttl=300)
@@ -14,6 +15,15 @@ def _fetch_psc_species():
     response = supabase.table("species").select(
         "code, species_name, unit"
     ).eq("is_psc", True).order("species_name").execute()
+    return response.data if response.data else []
+
+
+@st.cache_data(ttl=300)
+def _fetch_rpca_areas():
+    """Cached: Fetch RPCA areas for dropdown."""
+    response = supabase.table("rpca_areas").select(
+        "id, code, name"
+    ).order("code").execute()
     return response.data if response.data else []
 
 
@@ -31,27 +41,21 @@ def get_psc_species_options() -> dict[str, dict]:
     }
 
 
-def insert_bycatch_alert(
+def insert_bycatch_alert_with_hauls(
     llp: str,
     species_code: int,
-    latitude: float,
-    longitude: float,
-    amount: float,
-    unit: str,
+    hauls: list[dict],
     details: str | None,
     user_id: str,
     org_id: str
 ) -> tuple[bool, str | None]:
     """
-    Insert a new bycatch alert report.
+    Insert a new bycatch alert with multiple hauls.
 
     Args:
         llp: Reporting vessel's LLP
         species_code: PSC species code
-        latitude: GPS latitude
-        longitude: GPS longitude
-        amount: Estimated amount/count
-        unit: Unit of measurement ('lbs' or 'count')
+        hauls: List of haul data dicts
         details: Optional free-form details
         user_id: ID of user creating the report
         org_id: Organization ID for multi-tenant isolation
@@ -60,35 +64,80 @@ def insert_bycatch_alert(
         Tuple of (success: bool, error: str | None)
     """
     try:
-        clean_details = details.strip() if details else None
-        clean_details = clean_details if clean_details else None
+        if not hauls:
+            return False, "At least one haul is required"
 
-        record = {
+        # Validate all hauls
+        for haul in hauls:
+            valid, error = validate_haul_data(haul)
+            if not valid:
+                return False, f"Haul {haul.get('haul_number', '?')}: {error}"
+
+        first_haul = hauls[0]
+        total_amount = sum(h["amount"] for h in hauls)
+        clean_details = details.strip() if details else None
+
+        # Create parent alert with legacy columns
+        alert_record = {
             "org_id": org_id,
             "reported_by_llp": llp,
             "species_code": species_code,
-            "latitude": latitude,
-            "longitude": longitude,
-            "amount": amount,
-            "unit": unit,
+            "latitude": first_haul["set_latitude"],
+            "longitude": first_haul["set_longitude"],
+            "amount": total_amount,
             "details": clean_details,
             "status": "pending",
             "created_by": user_id,
             "is_deleted": False
         }
 
-        response = supabase.table("bycatch_alerts").insert(record).execute()
+        response = supabase.table("bycatch_alerts").insert(alert_record).execute()
 
-        if response.data:
-            return True, None
-        return False, "Insert returned no data"
+        if not response.data:
+            return False, "Failed to create alert"
+
+        alert_id = response.data[0]["id"]
+
+        # Create hauls
+        haul_records = []
+        for i, haul in enumerate(hauls, 1):
+            record = {
+                "alert_id": alert_id,
+                "haul_number": i,
+                "location_name": haul.get("location_name"),
+                "high_salmon_encounter": haul.get("high_salmon_encounter", False),
+                "set_date": haul["set_date"].isoformat() if haul.get("set_date") else None,
+                "set_time": haul["set_time"].isoformat() if haul.get("set_time") else None,
+                "set_latitude": haul["set_latitude"],
+                "set_longitude": haul["set_longitude"],
+                "retrieval_date": haul["retrieval_date"].isoformat() if haul.get("retrieval_date") else None,
+                "retrieval_time": haul["retrieval_time"].isoformat() if haul.get("retrieval_time") else None,
+                "retrieval_latitude": haul.get("retrieval_latitude"),
+                "retrieval_longitude": haul.get("retrieval_longitude"),
+                "bottom_depth": haul.get("bottom_depth"),
+                "sea_depth": haul.get("sea_depth"),
+                "rpca_area_id": haul.get("rpca_area_id"),
+                "amount": haul["amount"]
+            }
+            haul_records.append(record)
+
+        haul_response = supabase.table("bycatch_hauls").insert(haul_records).execute()
+
+        if not haul_response.data:
+            # Rollback: soft delete the alert
+            supabase.table("bycatch_alerts").update({
+                "is_deleted": True
+            }).eq("id", alert_id).execute()
+            return False, "Failed to create hauls"
+
+        return True, None
 
     except Exception as e:
         return False, str(e)
 
 
 def show():
-    """Display the bycatch report form for vessel owners."""
+    """Display the bycatch report form for vessel owners with multi-haul support."""
     from app.utils.styles import page_header, section_header
 
     # Role check - vessel_owner can access, but admin/manager can too
@@ -111,23 +160,16 @@ def show():
 
     # Get PSC species options: {species_name: {code, unit}}
     psc_species = get_psc_species_options()
+    rpca_areas = _fetch_rpca_areas()
 
     if not psc_species:
         st.warning("No PSC species found. Please ensure species table has is_psc=true entries.")
         return
 
-    # --- REPORT FORM ---
-    section_header("LOCATION & SPECIES", "📍")
+    # --- SPECIES SELECTION ---
+    section_header("SPECIES", "🐟")
 
-    # Coordinate input using shared component
-    latitude, longitude = render_coordinate_inputs(
-        lat_key_prefix="report_",
-        lon_key_prefix="report_"
-    )
-
-    # Species selection (outside form for dynamic label updates)
     species_options = list(psc_species.keys())
-
     selected_species_name = st.selectbox(
         "Bycatch Species",
         options=species_options,
@@ -138,41 +180,45 @@ def show():
     if selected_species_name:
         species_info = psc_species[selected_species_name]
         unit = species_info["unit"]
+        amount_unit = "count" if unit == "count" else "lbs"
     else:
-        unit = "lbs"
+        amount_unit = "lbs"
 
-    section_header("AMOUNT & DETAILS", "📊")
+    # --- COORDINATE FORMAT ---
+    section_header("COORDINATE FORMAT", "🧭")
+    use_dms = render_coordinate_format_toggle(key="report_coord_format")
 
-    # Amount with dynamic label based on species
-    amount_label = "Count (number of fish)" if unit == "count" else "Amount (lbs)"
-    amount = st.number_input(
-        amount_label,
-        min_value=1.0,
-        max_value=1000000.0,
-        value=100.0,
-        step=1.0 if unit == "count" else 10.0,
-        help="Estimated count of fish" if unit == "count" else "Estimated pounds of bycatch"
+    # --- HAUL DETAILS ---
+    section_header("HAUL DETAILS", "📍")
+    st.caption("Enter details for each haul/tow where bycatch was encountered")
+
+    haul_data_list = render_multi_haul_section(
+        key_prefix="report",
+        rpca_areas=rpca_areas,
+        use_dms_format=use_dms,
+        amount_unit=amount_unit
     )
 
-    # Form for details and submit
-    with st.form("bycatch_report_form", clear_on_submit=True):
+    # --- DETAILS AND SUBMIT ---
+    section_header("ADDITIONAL DETAILS", "📝")
+
+    with st.form("bycatch_report_form", clear_on_submit=False):
         details = st.text_area(
             "Details (optional)",
             max_chars=1000,
-            placeholder="Describe conditions, depth, time of day, gear type, etc.",
+            placeholder="Describe conditions, gear type, observations, etc.",
             help="Any additional information that might help other vessels"
         )
 
-        submitted = st.form_submit_button("Submit Report", use_container_width=True)
+        submitted = st.form_submit_button("Submit Report", use_container_width=True, type="primary")
 
     # Handle submission
     if submitted:
-        species_code = psc_species[selected_species_name]["code"]
-
-        # Validation (DMS inputs have built-in range constraints)
-        if amount <= 0:
-            st.error("Amount must be greater than zero.")
+        if not haul_data_list:
+            st.error("At least one haul is required.")
         else:
+            species_code = psc_species[selected_species_name]["code"]
+
             # Get user ID and org_id
             user_id = st.session_state.user.id if st.session_state.user else "unknown"
             org_id = st.session_state.get("org_id")
@@ -181,32 +227,31 @@ def show():
                 st.error("Organization not set. Please log out and log back in.")
                 return
 
-            # Use user's LLP or prompt for selection (for admin/manager testing)
+            # Use user's LLP
             reporting_llp = user_llp
             if not reporting_llp:
                 st.error("No LLP associated with your account. Cannot submit report.")
                 return
 
-            success, error = insert_bycatch_alert(
+            success, error = insert_bycatch_alert_with_hauls(
                 llp=reporting_llp,
                 species_code=species_code,
-                latitude=latitude,
-                longitude=longitude,
-                amount=amount,
-                unit=unit,
+                hauls=haul_data_list,
                 details=details,
                 user_id=user_id,
                 org_id=org_id
             )
 
             if success:
-                unit_display = "fish" if unit == "count" else "lbs"
-                coords_display = format_coordinates_dms(latitude, longitude)
+                total_amount = sum(h["amount"] for h in haul_data_list)
+                unit_display = "fish" if amount_unit == "count" else "lbs"
+                # Clear session state for hauls
+                if "report_haul_numbers" in st.session_state:
+                    del st.session_state["report_haul_numbers"]
                 st.success(
-                    f"Bycatch report submitted! "
-                    f"Location: {coords_display} | "
+                    f"Bycatch report submitted with {len(haul_data_list)} haul(s)! "
                     f"Species: {selected_species_name} | "
-                    f"Amount: {amount:,.0f} {unit_display}"
+                    f"Total: {total_amount:,.0f} {unit_display}"
                 )
                 st.info("Your co-op manager will review and share this alert with the fleet.")
                 st.rerun()
@@ -235,7 +280,8 @@ def show():
                     status_emoji = {
                         "pending": "⏳",
                         "shared": "✅",
-                        "dismissed": "❌"
+                        "dismissed": "❌",
+                        "resolved": "🔵"
                     }.get(alert["status"], "❓")
 
                     species_name = species_code_to_name.get(

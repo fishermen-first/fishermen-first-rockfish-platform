@@ -348,13 +348,19 @@ class TestTransferValidation:
         assert is_invalid is True
 
     def test_valid_species_codes(self):
-        """Only target species codes are valid."""
+        """Target and secondary species codes are valid for transfers."""
         from app.views.transfers import SPECIES_OPTIONS
 
+        # Original target species
         assert 141 in SPECIES_OPTIONS  # POP
         assert 136 in SPECIES_OPTIONS  # NR
         assert 172 in SPECIES_OPTIONS  # Dusky
-        assert 200 not in SPECIES_OPTIONS  # Halibut (PSC) should not be included
+
+        # New secondary species (added per client meeting)
+        assert 137 in SPECIES_OPTIONS  # Shortraker
+        assert 138 in SPECIES_OPTIONS  # Rougheye
+        assert 143 in SPECIES_OPTIONS  # Thornyhead
+        assert 200 in SPECIES_OPTIONS  # Halibut (now transferable)
 
 
 class TestTransferIntegration:
