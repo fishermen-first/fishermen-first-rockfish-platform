@@ -395,57 +395,6 @@ class TestGetQuotaData:
         assert result.iloc[0]['pct_remaining'] is None  # Should be None, not error
 
 
-class TestKpiCard:
-    """Tests for kpi_card function."""
-
-    def test_generates_html(self):
-        """Should generate HTML string."""
-        from app.views.dashboard import kpi_card
-
-        result = kpi_card("Test Label", "42")
-
-        assert '<div' in result
-        assert 'Test Label' in result
-        assert '42' in result
-
-    def test_includes_subtitle_when_provided(self):
-        """Should include subtitle in HTML."""
-        from app.views.dashboard import kpi_card
-
-        result = kpi_card("Label", "100", subtitle="extra info")
-
-        assert 'extra info' in result
-
-
-class TestSpeciesKpiCard:
-    """Tests for species_kpi_card function."""
-
-    def test_includes_percentage(self):
-        """Should include formatted percentage."""
-        from app.views.dashboard import species_kpi_card
-
-        result = species_kpi_card("POP", 75.5, 7500, 10000)
-
-        assert '76%' in result  # Rounded
-
-    def test_includes_remaining_and_allocated(self):
-        """Should show remaining of allocated."""
-        from app.views.dashboard import species_kpi_card
-
-        result = species_kpi_card("NR", 50, 5000, 10000)
-
-        assert '5.0K' in result
-        assert '10.0K' in result
-
-    def test_uses_correct_color_for_risk(self):
-        """Should use red color for critical percentage."""
-        from app.views.dashboard import species_kpi_card
-
-        result = species_kpi_card("POP", 5, 500, 10000)
-
-        assert '#dc2626' in result  # Red for critical
-
-
 class TestEdgeCases:
     """Edge case tests for dashboard functionality."""
 
@@ -623,22 +572,3 @@ class TestEdgeCases:
         # Vessel should not be at risk if NaN (unknown) rather than critical
         assert result.iloc[0]['vessel_at_risk'] == False
 
-    def test_species_kpi_card_with_zero_allocation(self):
-        """Should handle zero allocation gracefully."""
-        from app.views.dashboard import species_kpi_card
-
-        # Zero allocation - percentage should be handled
-        result = species_kpi_card("POP", None, 0, 0)
-
-        assert 'POP' in result
-        assert 'N/A' in result  # Should display N/A for unknown percentage
-        assert '#94a3b8' in result  # Gray color for N/A
-
-    def test_species_kpi_card_with_negative_remaining(self):
-        """Should display negative remaining (overdrawn)."""
-        from app.views.dashboard import species_kpi_card
-
-        result = species_kpi_card("POP", -10.0, -1000, 10000)
-
-        assert 'POP' in result
-        assert '#dc2626' in result  # Red for critical/negative

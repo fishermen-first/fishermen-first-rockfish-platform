@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 from app.config import supabase
-from app.utils.formatting import format_lbs, get_pct_color, get_risk_level
+from app.utils.formatting import format_lbs, get_risk_level
 
 SPECIES_MAP = {141: 'POP', 136: 'NR', 172: 'Dusky'}
 
@@ -106,36 +106,32 @@ def add_risk_flags(df):
     return df
 
 
-def kpi_card(label, value, icon=None, subtitle=None):
-    """Create a styled KPI card with consistent height"""
-    icon_html = f'<span style="margin-right: 6px;">{icon}</span>' if icon else ''
-    if subtitle:
-        subtitle_html = f'<div style="color: #64748b; font-size: 13px; margin-top: 6px;"><strong style="color: #475569;">{subtitle}</strong></div>'
+def render_species_metric(label: str, pct: float, remaining: float, allocated: float):
+    """Render a species quota metric using native st.metric with border.
+
+    Uses delta_color to indicate risk level:
+    - inverse (red arrow): critical (<10%)
+    - off (gray): warning (<50%)
+    - normal (green arrow): healthy
+    """
+    pct_display = f"{pct:.0f}%" if pct is not None else "N/A"
+    detail = f"{format_lbs(remaining)} of {format_lbs(allocated)} lbs"
+
+    # Determine delta color based on risk level
+    if pct is not None and pct < 10:
+        delta_color = "inverse"  # Red - critical
+    elif pct is not None and pct < 50:
+        delta_color = "off"  # Gray - warning
     else:
-        subtitle_html = '<div style="color: #64748b; font-size: 13px; margin-top: 6px;">&nbsp;</div>'
+        delta_color = "normal"  # Green - healthy
 
-    return f"""
-    <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center;">
-        <div style="color: #64748b; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">{icon_html}{label}</div>
-        <div style="font-size: 36px; font-weight: 700; color: #1e293b;">{value}</div>
-        {subtitle_html}
-    </div>
-    """
-
-
-def species_kpi_card(label, pct, remaining, allocated, species_code=None):
-    """Generate HTML for a species KPI card"""
-    # Use dark color for "ok" status to match dashboard styling
-    color = get_pct_color(pct, ok_color="#1e293b")
-    pct_display = "N/A" if pct is None else f"{pct:.0f}%"
-
-    return f"""
-    <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center;">
-        <div style="color: #64748b; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">{label}</div>
-        <div style="font-size: 36px; font-weight: 700; color: {color};">{pct_display}</div>
-        <div style="color: #64748b; font-size: 14px; margin-top: 8px;"><strong style="color: #475569;">{format_lbs(remaining)}</strong> of {format_lbs(allocated)} lbs</div>
-    </div>
-    """
+    st.metric(
+        label=label,
+        value=pct_display,
+        delta=detail,
+        delta_color=delta_color,
+        border=True
+    )
 
 
 # =============================================================================
@@ -203,29 +199,19 @@ def render_dashboard():
     # Section label for KPIs
     section_header("OVERVIEW", "📊")
 
-    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
-
-    with kpi1:
-        st.markdown(kpi_card("Vessels", str(total_vessels)), unsafe_allow_html=True)
-    with kpi2:
-        if vessels_at_risk > 0:
-            st.markdown(f"""
-            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center;">
-                <div style="color: #dc2626; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">At Risk</div>
-                <div style="font-size: 36px; font-weight: 700; color: #dc2626;">{vessels_at_risk}</div>
-                <div style="color: #64748b; font-size: 14px; margin-top: 8px;">&nbsp;</div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(kpi_card("At Risk", "0"), unsafe_allow_html=True)
-    with kpi3:
-        st.markdown(species_kpi_card("POP Remaining", total_pop_pct, total_pop_remaining, total_pop_allocated, "POP"), unsafe_allow_html=True)
-    with kpi4:
-        st.markdown(species_kpi_card("NR Remaining", total_nr_pct, total_nr_remaining, total_nr_allocated, "NR"), unsafe_allow_html=True)
-    with kpi5:
-        st.markdown(species_kpi_card("Dusky Remaining", total_dusky_pct, total_dusky_remaining, total_dusky_allocated, "Dusky"), unsafe_allow_html=True)
-
-    st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
+    # Use horizontal container for responsive metric row (wraps on small screens)
+    with st.container(horizontal=True):
+        st.metric("Vessels", total_vessels, border=True)
+        st.metric(
+            "At Risk",
+            int(vessels_at_risk),
+            delta="critical" if vessels_at_risk > 0 else None,
+            delta_color="inverse" if vessels_at_risk > 0 else "off",
+            border=True
+        )
+        render_species_metric("POP Remaining", total_pop_pct, total_pop_remaining, total_pop_allocated)
+        render_species_metric("NR Remaining", total_nr_pct, total_nr_remaining, total_nr_allocated)
+        render_species_metric("Dusky Remaining", total_dusky_pct, total_dusky_remaining, total_dusky_allocated)
 
     # --- VESSELS NEEDING ATTENTION ---
     section_header("VESSELS NEEDING ATTENTION", "⚠️")
@@ -233,19 +219,13 @@ def render_dashboard():
     # Get vessels at risk (any species <10%)
     at_risk_df = filtered_df[filtered_df["vessel_at_risk"] == True].copy()
 
-    with st.container():
+    with st.container(border=True):
         if at_risk_df.empty:
-            st.markdown("""
-            <div style='background: white; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #059669;'>
-                ✅ No vessels currently at critical risk levels
-            </div>
-            """, unsafe_allow_html=True)
+            st.success("No vessels currently at critical risk levels")
         else:
             # Sort by lowest percent remaining across any species
             at_risk_df["min_pct"] = at_risk_df[[f"{s}_pct_remaining" for s in ["POP", "NR", "Dusky"] if f"{s}_pct_remaining" in at_risk_df.columns]].min(axis=1)
             at_risk_df = at_risk_df.sort_values("min_pct").head(7)
-
-            st.markdown("<div style='background: white; padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;'>", unsafe_allow_html=True)
 
             # Display as simple rows with colored dots
             for _, row in at_risk_df.iterrows():
@@ -266,15 +246,11 @@ def render_dashboard():
                             color = "🟢"
                         dots.append(f"{color} {species}: {pct:.1f}%")
 
-                dot_str = " &nbsp;&nbsp; ".join(dots)
-                st.markdown(f"**{vessel_name}** (LLP: {llp}) &nbsp;&nbsp; {dot_str}", unsafe_allow_html=True)
+                dot_str = "  ".join(dots)
+                st.markdown(f"**{vessel_name}** (LLP: {llp})  {dot_str}")
 
             if len(filtered_df[filtered_df["vessel_at_risk"] == True]) > 7:
-                st.markdown("*View all at-risk vessels in the table below*")
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div style='margin: 1.5rem 0;'></div>", unsafe_allow_html=True)
+                st.caption("View all at-risk vessels in the table below")
 
     # --- MAIN DATA TABLE ---
     section_header("QUOTA REMAINING BY VESSEL", "📋")
@@ -282,66 +258,57 @@ def render_dashboard():
     # Prepare display dataframe
     display_df = filtered_df.copy()
 
-    # Select and rename columns for display
-    display_cols = {
-        "coop_code": "Co-Op",
-        "vessel_name": "Vessel",
-        "llp": "LLP"
-    }
-
+    # Select columns for display
+    selected_cols = ["coop_code", "vessel_name", "llp"]
     for species in ["POP", "NR", "Dusky"]:
         lbs_col = f"{species}_remaining_lbs"
         pct_col = f"{species}_pct_remaining"
         if lbs_col in display_df.columns:
-            display_cols[lbs_col] = f"{species} (lbs)"
+            selected_cols.append(lbs_col)
         if pct_col in display_df.columns:
-            display_cols[pct_col] = f"{species} %"
+            selected_cols.append(pct_col)
 
-    # Filter to only columns we want
-    available_cols = [c for c in display_cols.keys() if c in display_df.columns]
-    display_df = display_df[available_cols].rename(columns=display_cols)
+    # Filter to available columns
+    available_cols = [c for c in selected_cols if c in display_df.columns]
+    display_df = display_df[available_cols]
 
     # Sort by lowest % remaining
-    pct_cols = [c for c in display_df.columns if "%" in c]
+    pct_cols = [c for c in display_df.columns if "pct_remaining" in c]
     if pct_cols:
         display_df["_min_pct"] = display_df[pct_cols].min(axis=1)
         display_df = display_df.sort_values("_min_pct").drop(columns=["_min_pct"])
 
-    # Apply styling with progress bars
-    def color_pct(val):
-        """Color based on risk level"""
-        if pd.isna(val):
-            return ""
-        if val < 10:
-            return "color: #dc2626"  # red
-        elif val < 50:
-            return "color: #d97706"  # amber
-        return "color: #059669"  # green
+    # Build column_config for formatting
+    column_config = {
+        "coop_code": st.column_config.TextColumn("Co-Op"),
+        "vessel_name": st.column_config.TextColumn("Vessel"),
+        "llp": st.column_config.TextColumn("LLP"),
+    }
 
-    # Format and style
-    lbs_cols = [c for c in display_df.columns if "(lbs)" in c]
-    pct_cols = [c for c in display_df.columns if "%" in c]
+    # Add species columns with proper formatting
+    for species in ["POP", "NR", "Dusky"]:
+        lbs_col = f"{species}_remaining_lbs"
+        pct_col = f"{species}_pct_remaining"
 
-    format_dict = {c: "{:,.0f}" for c in lbs_cols}
-    format_dict.update({c: "{:.1f}%" for c in pct_cols})
+        if lbs_col in display_df.columns:
+            column_config[lbs_col] = st.column_config.NumberColumn(
+                f"{species} (lbs)",
+                format="%,.0f"
+            )
+        if pct_col in display_df.columns:
+            column_config[pct_col] = st.column_config.ProgressColumn(
+                f"{species} %",
+                min_value=0,
+                max_value=100,
+                format="%.1f%%"
+            )
 
-    styled_df = display_df.style.format(format_dict, na_rep="-")
-
-    # Add bars to percent columns
-    for col in pct_cols:
-        styled_df = styled_df.bar(
-            subset=[col],
-            vmin=0,
-            vmax=100,
-            color="#e0e7ff"  # light indigo
-        )
-
-    # Color the percent text
-    styled_df = styled_df.applymap(color_pct, subset=pct_cols)
-
-    st.dataframe(styled_df, use_container_width=True, hide_index=True, height=500)
+    st.dataframe(
+        display_df,
+        column_config=column_config,
+        use_container_width=True,
+        hide_index=True,
+        height=500
+    )
 
     st.caption(f"Showing {len(display_df)} vessels")
-
-    # Store filtered_df for next sections
-    st.session_state.dashboard_filtered_df = filtered_df

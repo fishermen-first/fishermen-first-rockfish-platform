@@ -77,7 +77,7 @@ def get_llp_options() -> list[tuple[str, str]]:
         return []
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=30, max_entries=500)
 def get_quota_remaining(llp: str, species_code: int, year: int = CURRENT_YEAR) -> float:
     """
     Get remaining quota for a specific LLP and species.
@@ -362,23 +362,21 @@ def show():
         # Add MT column for e-fish reconciliation
         display_df["mt"] = display_df["pounds"] / LBS_PER_MT
 
-        display_df = display_df.rename(columns={
-            "transfer_date": "Date",
-            "from_llp": "From LLP",
-            "from_vessel": "From Vessel",
-            "to_llp": "To LLP",
-            "to_vessel": "To Vessel",
-            "species": "Species",
-            "pounds": "Pounds",
-            "mt": "MT",
-            "notes": "Notes"
-        })
-
-        # Format and display
-        styled_df = display_df.style.format({
-            "Pounds": "{:,.0f}",
-            "MT": "{:,.2f}"
-        })
-
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        # Display with column_config for formatting
+        st.dataframe(
+            display_df,
+            column_config={
+                "transfer_date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+                "from_llp": st.column_config.TextColumn("From LLP"),
+                "from_vessel": st.column_config.TextColumn("From Vessel"),
+                "to_llp": st.column_config.TextColumn("To LLP"),
+                "to_vessel": st.column_config.TextColumn("To Vessel"),
+                "species": st.column_config.TextColumn("Species"),
+                "pounds": st.column_config.NumberColumn("Pounds", format="%,.0f"),
+                "mt": st.column_config.NumberColumn("MT", format="%.2f"),
+                "notes": st.column_config.TextColumn("Notes"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
         st.caption(f"{len(display_df)} transfers")

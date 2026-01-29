@@ -198,7 +198,7 @@ def show():
                 return "color: #059669; font-weight: bold;"
             return "color: #dc2626; font-weight: bold;"
 
-        styled_df = df.style.applymap(style_direction, subset=["Direction"]).format({
+        styled_df = df.style.map(style_direction, subset=["Direction"]).format({
             "Pounds": "{:,.0f}"
         })
 
@@ -223,14 +223,23 @@ def show():
             processor = processor_map.get(h["processor_code"], h["processor_code"] or "Unknown")
 
             harvest_rows.append({
-                "Date": h["harvest_date"],
-                "Species": species,
-                "Pounds": h["pounds"],
-                "Processor": processor
+                "date": h["harvest_date"],
+                "species": species,
+                "pounds": h["pounds"],
+                "processor": processor
             })
 
         df = pd.DataFrame(harvest_rows)
-        styled_df = df.style.format({"Pounds": "{:,.0f}"})
 
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        st.dataframe(
+            df,
+            column_config={
+                "date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+                "species": st.column_config.TextColumn("Species"),
+                "pounds": st.column_config.NumberColumn("Pounds", format="%,.0f"),
+                "processor": st.column_config.TextColumn("Processor"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
         st.caption(f"{len(harvests)} harvest records")

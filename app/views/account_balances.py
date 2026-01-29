@@ -5,18 +5,25 @@ import pandas as pd
 from app.config import supabase
 
 
+@st.cache_data(ttl=60)
+def _fetch_account_balances():
+    """Cached: Fetch account balances (refreshes every 60s)."""
+    response = supabase.table("account_balances").select("*").execute()
+    return response.data if response.data else []
+
+
 def show():
     from app.utils.styles import page_header
     page_header("Account Balances", "Latest balance data by co-op and species")
 
-    # Fetch data from account_balances view
-    response = supabase.table("account_balances").select("*").execute()
+    # Fetch data from account_balances view (cached)
+    data = _fetch_account_balances()
 
-    if not response.data:
+    if not data:
         st.info("No account balance data uploaded yet.")
         return
 
-    df = pd.DataFrame(response.data)
+    df = pd.DataFrame(data)
 
     # Show last uploaded time
     if 'created_at' in df.columns:
