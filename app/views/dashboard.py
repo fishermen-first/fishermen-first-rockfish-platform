@@ -90,11 +90,22 @@ def _get_risk_level_for_df(pct):
 
 
 def add_risk_flags(df):
-    """Add risk flags for each species and overall vessel risk"""
+    """Add risk flags for each species and overall vessel risk.
+
+    Uses risk_level from quota_metrics view when available,
+    falls back to calculating from pct_remaining if not present.
+    """
     for species in ["POP", "NR", "Dusky"]:
-        col = f"{species}_pct_remaining"
-        if col in df.columns:
-            df[f"{species}_risk"] = df[col].apply(_get_risk_level_for_df)
+        risk_col = f"{species}_risk_level"  # From pivoted quota_metrics view
+        pct_col = f"{species}_pct_remaining"
+        target_col = f"{species}_risk"
+
+        if risk_col in df.columns:
+            # Use pre-calculated risk_level from SQL view
+            df[target_col] = df[risk_col]
+        elif pct_col in df.columns:
+            # Fallback: calculate from percentage (backward compatibility)
+            df[target_col] = df[pct_col].apply(_get_risk_level_for_df)
 
     # Vessel is at risk if ANY species is critical
     risk_cols = [f"{s}_risk" for s in ["POP", "NR", "Dusky"] if f"{s}_risk" in df.columns]
