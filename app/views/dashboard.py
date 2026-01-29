@@ -9,9 +9,9 @@ SPECIES_MAP = {141: 'POP', 136: 'NR', 172: 'Dusky'}
 
 
 @st.cache_data(ttl=60)
-def _fetch_quota_remaining(year: int):
-    """Cached: Fetch raw quota_remaining data from database."""
-    response = supabase.table("quota_remaining").select("*").eq("year", year).execute()
+def _fetch_quota_metrics(year: int):
+    """Cached: Fetch quota_metrics data from database (includes remaining_pct and risk_level)."""
+    response = supabase.table("quota_metrics").select("*").eq("year", year).execute()
     return response.data if response.data else []
 
 
@@ -23,9 +23,9 @@ def _fetch_coop_members():
 
 
 def get_quota_data():
-    """Fetch quota_remaining joined with coop_members for vessel info"""
+    """Fetch quota_metrics joined with coop_members for vessel info"""
     # Use cached data fetchers
-    quota_data = _fetch_quota_remaining(2026)
+    quota_data = _fetch_quota_metrics(2026)
     if not quota_data:
         return pd.DataFrame()
 
@@ -50,12 +50,9 @@ def get_quota_data():
 
     df = df[df["species"].notna()].copy()
 
-    # Calculate percent remaining (handle 0 allocation)
-    df["pct_remaining"] = df.apply(
-        lambda row: (row["remaining_lbs"] / row["allocation_lbs"] * 100)
-        if row["allocation_lbs"] > 0 else None,
-        axis=1
-    )
+    # Rename view column to match downstream code expectations
+    # quota_metrics view provides remaining_pct, but downstream expects pct_remaining
+    df = df.rename(columns={"remaining_pct": "pct_remaining"})
 
     return df
 
@@ -68,7 +65,7 @@ def pivot_quota_data(df):
     pivot = df.pivot_table(
         index=["llp", "vessel_name", "coop_code"],
         columns="species",
-        values=["remaining_lbs", "allocation_lbs", "pct_remaining"],
+        values=["remaining_lbs", "allocation_lbs", "pct_remaining", "risk_level"],
         aggfunc="first"
     ).reset_index()
 
