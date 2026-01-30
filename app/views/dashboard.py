@@ -306,7 +306,7 @@ def render_dashboard():
         if lbs_col in display_df.columns:
             column_config[lbs_col] = st.column_config.NumberColumn(
                 f"{species} (lbs)",
-                format="%,.0f"
+                format="%.0f"
             )
         if pct_col in display_df.columns:
             column_config[pct_col] = st.column_config.ProgressColumn(
