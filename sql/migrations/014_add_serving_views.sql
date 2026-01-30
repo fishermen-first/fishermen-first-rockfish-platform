@@ -58,7 +58,7 @@ WITH (security_invoker = true)
 AS
 SELECT
     qm.org_id,
-    l.coop_code,
+    cm.coop_code,
     qm.species_code,
     qm.year,
     -- Aggregated quota metrics
@@ -77,9 +77,9 @@ SELECT
     -- Vessel counts
     COUNT(DISTINCT qm.llp) AS vessel_count
 FROM quota_metrics qm
-JOIN llps l ON qm.llp = l.llp AND qm.org_id = l.org_id
-GROUP BY qm.org_id, l.coop_code, qm.species_code, qm.year
-ORDER BY l.coop_code, qm.species_code;
+JOIN coop_members cm ON qm.llp = cm.llp AND qm.org_id = cm.org_id
+GROUP BY qm.org_id, cm.coop_code, qm.species_code, qm.year
+ORDER BY cm.coop_code, qm.species_code;
 
 -- =============================================================================
 -- PART 4: ADD DOCUMENTATION TO kpi_coop_summary VIEW
@@ -94,7 +94,7 @@ COMMENT ON VIEW kpi_coop_summary IS
 
     Columns:
     - org_id: Organization identifier for multi-tenant filtering
-    - coop_code: Cooperative code from llps table
+    - coop_code: Cooperative code from coop_members table
     - species_code: Species identifier (POP=141, NR=136, Dusky=172)
     - year: Quota year
     - total_allocation_lbs: Sum of initial allocations across all vessels in coop
@@ -117,7 +117,7 @@ COMMENT ON VIEW kpi_coop_summary IS
 
     Dependencies:
     - quota_metrics view: Provides per-vessel metrics including risk_level
-    - llps table: Provides coop_code for grouping vessels by cooperative
+    - coop_members table: Provides coop_code for grouping vessels by cooperative
 
     RLS Compatibility:
     - Uses WITH (security_invoker = true) to inherit RLS policies from quota_metrics view
