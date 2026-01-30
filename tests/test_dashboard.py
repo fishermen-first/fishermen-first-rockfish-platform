@@ -268,13 +268,15 @@ class TestGetQuotaData:
     @patch('app.views.dashboard.supabase')
     def test_joins_with_coop_members(self, mock_supabase):
         """Should join quota data with vessel info."""
-        # Mock quota_remaining data
+        # Mock quota_metrics data
         quota_response = MagicMock()
         quota_response.data = [{
             'llp': 'LLP1',
             'species_code': 141,
             'remaining_lbs': 5000,
-            'allocation_lbs': 10000
+            'allocation_lbs': 10000,
+            'remaining_pct': 50.0,
+            'risk_level': 'ok'
         }]
 
         # Mock coop_members data
@@ -287,7 +289,7 @@ class TestGetQuotaData:
 
         def table_side_effect(table_name):
             mock_table = MagicMock()
-            if table_name == 'quota_remaining':
+            if table_name == 'quota_metrics':
                 mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
             else:
                 mock_table.select.return_value.execute.return_value = members_response
@@ -308,8 +310,8 @@ class TestGetQuotaData:
         """Should map species codes to names."""
         quota_response = MagicMock()
         quota_response.data = [
-            {'llp': 'LLP1', 'species_code': 141, 'remaining_lbs': 5000, 'allocation_lbs': 10000},
-            {'llp': 'LLP1', 'species_code': 136, 'remaining_lbs': 3000, 'allocation_lbs': 6000},
+            {'llp': 'LLP1', 'species_code': 141, 'remaining_lbs': 5000, 'allocation_lbs': 10000, 'remaining_pct': 50.0, 'risk_level': 'ok'},
+            {'llp': 'LLP1', 'species_code': 136, 'remaining_lbs': 3000, 'allocation_lbs': 6000, 'remaining_pct': 50.0, 'risk_level': 'ok'},
         ]
 
         members_response = MagicMock()
@@ -317,7 +319,7 @@ class TestGetQuotaData:
 
         def table_side_effect(table_name):
             mock_table = MagicMock()
-            if table_name == 'quota_remaining':
+            if table_name == 'quota_metrics':
                 mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
             else:
                 mock_table.select.return_value.execute.return_value = members_response
@@ -335,14 +337,16 @@ class TestGetQuotaData:
         assert 'NR' in species_list
 
     @patch('app.views.dashboard.supabase')
-    def test_calculates_percent_remaining(self, mock_supabase):
-        """Should calculate pct_remaining correctly."""
+    def test_uses_view_percent_remaining(self, mock_supabase):
+        """Should use pct_remaining from quota_metrics view."""
         quota_response = MagicMock()
         quota_response.data = [{
             'llp': 'LLP1',
             'species_code': 141,
             'remaining_lbs': 2500,
-            'allocation_lbs': 10000
+            'allocation_lbs': 10000,
+            'remaining_pct': 25.0,
+            'risk_level': 'warning'
         }]
 
         members_response = MagicMock()
@@ -350,7 +354,7 @@ class TestGetQuotaData:
 
         def table_side_effect(table_name):
             mock_table = MagicMock()
-            if table_name == 'quota_remaining':
+            if table_name == 'quota_metrics':
                 mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
             else:
                 mock_table.select.return_value.execute.return_value = members_response
@@ -362,7 +366,7 @@ class TestGetQuotaData:
 
         result = get_quota_data()
 
-        assert result.iloc[0]['pct_remaining'] == 25.0  # 2500/10000 * 100
+        assert result.iloc[0]['pct_remaining'] == 25.0  # Uses remaining_pct from view
 
     @patch('app.views.dashboard.supabase')
     def test_handles_zero_allocation(self, mock_supabase):
@@ -372,7 +376,9 @@ class TestGetQuotaData:
             'llp': 'LLP1',
             'species_code': 141,
             'remaining_lbs': 0,
-            'allocation_lbs': 0  # Zero allocation
+            'allocation_lbs': 0,  # Zero allocation
+            'remaining_pct': None,
+            'risk_level': 'na'
         }]
 
         members_response = MagicMock()
@@ -380,7 +386,7 @@ class TestGetQuotaData:
 
         def table_side_effect(table_name):
             mock_table = MagicMock()
-            if table_name == 'quota_remaining':
+            if table_name == 'quota_metrics':
                 mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
             else:
                 mock_table.select.return_value.execute.return_value = members_response
@@ -474,7 +480,9 @@ class TestEdgeCases:
             'llp': 'LLP1',
             'species_code': 999,  # Unknown code
             'remaining_lbs': 5000,
-            'allocation_lbs': 10000
+            'allocation_lbs': 10000,
+            'remaining_pct': 50.0,
+            'risk_level': 'ok'
         }]
 
         members_response = MagicMock()
@@ -482,7 +490,7 @@ class TestEdgeCases:
 
         def table_side_effect(table_name):
             mock_table = MagicMock()
-            if table_name == 'quota_remaining':
+            if table_name == 'quota_metrics':
                 mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
             else:
                 mock_table.select.return_value.execute.return_value = members_response
@@ -501,9 +509,9 @@ class TestEdgeCases:
         """Should keep known species and filter unknown ones."""
         quota_response = MagicMock()
         quota_response.data = [
-            {'llp': 'LLP1', 'species_code': 141, 'remaining_lbs': 5000, 'allocation_lbs': 10000},  # POP - keep
-            {'llp': 'LLP1', 'species_code': 999, 'remaining_lbs': 1000, 'allocation_lbs': 2000},   # Unknown - filter
-            {'llp': 'LLP1', 'species_code': 136, 'remaining_lbs': 3000, 'allocation_lbs': 6000},   # NR - keep
+            {'llp': 'LLP1', 'species_code': 141, 'remaining_lbs': 5000, 'allocation_lbs': 10000, 'remaining_pct': 50.0, 'risk_level': 'ok'},  # POP - keep
+            {'llp': 'LLP1', 'species_code': 999, 'remaining_lbs': 1000, 'allocation_lbs': 2000, 'remaining_pct': 50.0, 'risk_level': 'ok'},   # Unknown - filter
+            {'llp': 'LLP1', 'species_code': 136, 'remaining_lbs': 3000, 'allocation_lbs': 6000, 'remaining_pct': 50.0, 'risk_level': 'ok'},   # NR - keep
         ]
 
         members_response = MagicMock()
@@ -511,7 +519,7 @@ class TestEdgeCases:
 
         def table_side_effect(table_name):
             mock_table = MagicMock()
-            if table_name == 'quota_remaining':
+            if table_name == 'quota_metrics':
                 mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
             else:
                 mock_table.select.return_value.execute.return_value = members_response

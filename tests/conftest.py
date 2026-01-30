@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def clear_streamlit_caches():
     """Clear all Streamlit caches before each test to prevent data leakage."""
     # Import cached functions
-    from app.views.dashboard import _fetch_quota_remaining, _fetch_coop_members
+    from app.views.dashboard import _fetch_quota_metrics, _fetch_coop_members
     from app.views.transfers import (
         _fetch_coop_members_for_dropdown,
         _fetch_transfer_history,
@@ -37,7 +37,7 @@ def clear_streamlit_caches():
     )
 
     # Clear all caches before test
-    _fetch_quota_remaining.clear()
+    _fetch_quota_metrics.clear()
     _fetch_coop_members.clear()
     _fetch_coop_members_for_dropdown.clear()
     _fetch_transfer_history.clear()
@@ -57,7 +57,7 @@ def clear_streamlit_caches():
     yield
 
     # Clear again after test for good measure
-    _fetch_quota_remaining.clear()
+    _fetch_quota_metrics.clear()
     _fetch_coop_members.clear()
     _fetch_coop_members_for_dropdown.clear()
     _fetch_transfer_history.clear()
