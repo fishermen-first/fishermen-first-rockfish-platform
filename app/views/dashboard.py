@@ -209,12 +209,18 @@ def render_dashboard():
 
     # Use horizontal container for responsive metric row (wraps on small screens)
     with st.container(horizontal=True):
-        st.metric("Vessels", total_vessels, border=True)
+        st.metric(
+            "Vessels",
+            total_vessels,
+            delta="active in 2026",
+            delta_color="off",
+            border=True
+        )
         st.metric(
             "At Risk",
             int(vessels_at_risk),
-            delta="critical" if vessels_at_risk > 0 else None,
-            delta_color="inverse" if vessels_at_risk > 0 else "off",
+            delta=f"{int(vessels_at_risk)} need attention" if vessels_at_risk > 0 else "all healthy",
+            delta_color="inverse" if vessels_at_risk > 0 else "normal",
             border=True
         )
         render_species_metric("POP Remaining", total_pop_pct, total_pop_remaining, total_pop_allocated)
