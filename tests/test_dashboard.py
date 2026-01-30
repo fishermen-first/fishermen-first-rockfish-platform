@@ -151,7 +151,8 @@ class TestPivotQuotaData:
             'species': ['POP', 'NR', 'Dusky'],
             'remaining_lbs': [5000, 3000, 2000],
             'allocation_lbs': [10000, 6000, 4000],
-            'pct_remaining': [50.0, 50.0, 50.0]
+            'pct_remaining': [50.0, 50.0, 50.0],
+            'risk_level': ['ok', 'ok', 'ok']
         })
 
         result = pivot_quota_data(df)
@@ -172,7 +173,8 @@ class TestPivotQuotaData:
             'species': ['POP'],
             'remaining_lbs': [5000],
             'allocation_lbs': [10000],
-            'pct_remaining': [50.0]
+            'pct_remaining': [50.0],
+            'risk_level': ['ok']
         })
 
         result = pivot_quota_data(df)
@@ -369,6 +371,42 @@ class TestGetQuotaData:
         assert result.iloc[0]['pct_remaining'] == 25.0  # Uses remaining_pct from view
 
     @patch('app.views.dashboard.supabase')
+    def test_uses_view_risk_level(self, mock_supabase):
+        """Should use risk_level from quota_metrics view."""
+        quota_response = MagicMock()
+        quota_response.data = [{
+            'llp': 'LLP1',
+            'species_code': 141,
+            'remaining_lbs': 2500,
+            'allocation_lbs': 10000,
+            'remaining_pct': 25.0,
+            'risk_level': 'warning'  # Pre-calculated by SQL view
+        }]
+
+        members_response = MagicMock()
+        members_response.data = [{'llp': 'LLP1', 'vessel_name': 'Test', 'coop_code': 'SB'}]
+
+        def table_side_effect(table_name):
+            mock_table = MagicMock()
+            if table_name == 'quota_metrics':
+                mock_table.select.return_value.eq.return_value.execute.return_value = quota_response
+            else:
+                mock_table.select.return_value.execute.return_value = members_response
+            return mock_table
+
+        mock_supabase.table.side_effect = table_side_effect
+
+        from app.views.dashboard import get_quota_data, pivot_quota_data, add_risk_flags
+
+        raw_df = get_quota_data()
+        pivot_df = pivot_quota_data(raw_df)
+        result = add_risk_flags(pivot_df)
+
+        # Risk should come from view, not recalculated
+        assert 'POP_risk' in result.columns
+        assert result.iloc[0]['POP_risk'] == 'warning'
+
+    @patch('app.views.dashboard.supabase')
     def test_handles_zero_allocation(self, mock_supabase):
         """Should handle zero allocation without division error."""
         quota_response = MagicMock()
@@ -547,7 +585,8 @@ class TestEdgeCases:
             'species': ['POP', 'NR'],
             'remaining_lbs': [5000, 3000],
             'allocation_lbs': [10000, 6000],
-            'pct_remaining': [50.0, 50.0]
+            'pct_remaining': [50.0, 50.0],
+            'risk_level': ['ok', 'ok']
         })
 
         result = pivot_quota_data(df)
