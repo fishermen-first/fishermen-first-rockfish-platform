@@ -280,6 +280,11 @@ def render_dashboard():
     available_cols = [c for c in selected_cols if c in display_df.columns]
     display_df = display_df[available_cols]
 
+    # Convert numeric columns to float (PostgreSQL returns Decimal which Streamlit can't format)
+    for col in display_df.columns:
+        if "remaining_lbs" in col or "pct_remaining" in col or "allocation_lbs" in col:
+            display_df[col] = pd.to_numeric(display_df[col], errors="coerce")
+
     # Sort by lowest % remaining
     pct_cols = [c for c in display_df.columns if "pct_remaining" in c]
     if pct_cols:
