@@ -30,11 +30,15 @@ Multi-tenant SaaS for Alaska fishing cooperatives to track quota allocations and
 - ✓ Reconciliation view (internal vs eFish variance) — v1.0
 - ✓ Dashboard consumes SQL views — v1.0
 
+- ✓ Bycatch alert map — folium with red pins for shared alerts — v1.1
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-(None defined yet — run `/gsd:new-milestone` to plan next milestone)
+- Processor view — read-only view for processors
+- Email broadcasting — Resend integration for bycatch alert sharing
+- eLandings API sync — waiting on processor credentials
 
 ### Out of Scope
 
@@ -43,7 +47,6 @@ Multi-tenant SaaS for Alaska fishing cooperatives to track quota allocations and
 - DuckDB integration — PostgreSQL handles this workload fine
 - Materialized views — Premature optimization; add if performance degrades
 - BI tool changes — Views are the contract; Streamlit remains a "viewer"
-- New features (notifications, reporting) — Metrics layer hardening only
 
 ## Context
 
@@ -61,14 +64,14 @@ Multi-tenant SaaS for Alaska fishing cooperatives to track quota allocations and
 **Current Architecture:**
 - 15 migrations shipped (013-015 added in v1.0)
 - Core formula in `quota_remaining` view, extended by `quota_metrics` view
-- 40+ tests covering quota edge cases
+- 398 tests (362 unit + 26 integration + 10 e2e) all passing
 - Dashboard consumes SQL views for all derived metrics
 
 ## Constraints
 
 - **Tech stack**: PostgreSQL only (Supabase) — no new databases
 - **Backward compatibility**: Existing `quota_remaining` view must continue to work
-- **Testing**: All changes must pass existing 40+ quota tests
+- **Testing**: All changes must pass existing 362 unit tests
 
 ## Key Decisions
 
@@ -83,4 +86,4 @@ Multi-tenant SaaS for Alaska fishing cooperatives to track quota allocations and
 | Use 'ok' not 'healthy' for risk_level | Matches existing Python RISK_COLORS | ✓ Good (v1.0) |
 
 ---
-*Last updated: 2026-01-29 after v1.0 milestone shipped*
+*Last updated: 2026-02-05 — bycatch map shipped, planning files archived and trimmed*

@@ -807,7 +807,7 @@ def _render_create_alert_section(
     rpca_areas = _fetch_rpca_areas()
 
     # Styled container
-    with st.expander("CREATE NEW ALERT", expanded=True, icon=":material/pin_drop:"):
+    with st.expander("CREATE NEW ALERT", expanded=False, icon=":material/pin_drop:"):
         st.caption("Report a bycatch hotspot on behalf of a vessel (e.g., from radio call)")
 
         # Row 1: Vessel and Species selectors
