@@ -2,6 +2,8 @@
 
 import streamlit as st
 import pandas as pd
+import folium
+from streamlit_folium import st_folium
 from datetime import datetime, date, timedelta, timezone
 from zoneinfo import ZoneInfo
 from app.config import supabase
@@ -898,6 +900,69 @@ def _render_create_alert_section(
 
 
 # =============================================================================
+# HOTSPOT MAP
+# =============================================================================
+
+def _render_alert_map(
+    alerts: list[dict],
+    species_list: list[dict],
+    members: list[dict]
+):
+    """Render a folium map with red pins for active bycatch alerts.
+
+    Args:
+        alerts: Filtered list of alert records (should be shared/active alerts)
+        species_list: PSC species for name lookup
+        members: Coop members for vessel name lookup
+    """
+    # Filter to alerts with valid coordinates
+    mappable = [
+        a for a in alerts
+        if a.get("latitude") is not None and a.get("longitude") is not None
+    ]
+
+    if not mappable:
+        st.info("No alerts with coordinates to display on map.")
+        return
+
+    # Create map centered on Gulf of Alaska
+    m = folium.Map(location=[57.5, -152.0], zoom_start=6, tiles="OpenStreetMap")
+
+    # Add red markers for each alert
+    bounds = []
+    for alert in mappable:
+        lat = alert["latitude"]
+        lon = alert["longitude"]
+        bounds.append([lat, lon])
+
+        species_name = get_species_name(alert["species_code"], species_list)
+        vessel_name = get_vessel_name(alert["reported_by_llp"], members)
+        timestamp = format_timestamp(alert["created_at"])
+
+        popup_html = (
+            f"<b>{species_name}</b><br>"
+            f"Vessel: {vessel_name}<br>"
+            f"Amount: {alert['amount']:,.0f}<br>"
+            f"Date: {timestamp}"
+        )
+
+        folium.Marker(
+            location=[lat, lon],
+            popup=folium.Popup(popup_html, max_width=250),
+            icon=folium.Icon(color="red", icon="info-sign"),
+        ).add_to(m)
+
+    # Auto-fit bounds to show all pins
+    if len(bounds) > 1:
+        m.fit_bounds(bounds, padding=[30, 30])
+    elif len(bounds) == 1:
+        m.location = bounds[0]
+        m.zoom_start = 8
+
+    st_folium(m, use_container_width=True, height=450, returned_objects=[])
+
+
+# =============================================================================
 # MAIN PAGE
 # =============================================================================
 
@@ -974,6 +1039,18 @@ def show():
             value=date.today(),
             key="alert_date_to"
         )
+
+    # --- HOTSPOT MAP ---
+    section_header("HOTSPOT MAP", "🗺️")
+    map_alerts = fetch_alerts(
+        org_id,
+        status="shared",
+        species_code=selected_species,
+        coop_code=selected_coop,
+        date_from=date_from,
+        date_to=date_to
+    )
+    _render_alert_map(map_alerts, species_list, members)
 
     # --- VIEW SELECTOR (conditional rendering for performance) ---
     # Using segmented_control instead of tabs so only selected view renders

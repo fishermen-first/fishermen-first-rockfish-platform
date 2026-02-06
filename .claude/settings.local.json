@@ -1,66 +1,4 @@
 {
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \".claude/plugins/code-quality/scripts/hooks/session-start.js\""
-          }
-        ],
-        "description": "Check for SESSION.md and previous context on new session"
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \".claude/plugins/code-quality/scripts/hooks/session-end.js\""
-          }
-        ],
-        "description": "Persist session state on end"
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \".claude/plugins/code-quality/scripts/hooks/pre-compact.js\""
-          }
-        ],
-        "description": "Save state before context compaction"
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \".claude/plugins/code-quality/scripts/hooks/pre-push-check.js\""
-          }
-        ],
-        "description": "Reminder to run tests before pushing"
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.py$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \".claude/plugins/code-quality/scripts/hooks/check-python-prints.js\""
-          }
-        ],
-        "description": "Warn about print() statements in Python files"
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
@@ -129,9 +67,87 @@
       "Bash(gh issue create:*)",
       "Bash(code --install-extension:*)",
       "Bash(code:*)",
-      "Bash(gh issue view:*)"
+      "Bash(gh issue view:*)",
+      "Bash(ralph-tui convert:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(pip show:*)",
+      "Bash(gh repo view:*)",
+      "Bash(more:*)",
+      "Bash(TEST_PASSWORD=\"SlikVik32!\" ADMIN_PASSWORD=\"Fr@n_Sm0kes\" python -m pytest:*)",
+      "Skill(gsd:plan-phase)",
+      "Skill(gsd:plan-phase:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(if [ -d \".planning\" ])",
+      "Bash(then echo \"exists\")",
+      "Bash(else mkdir -p .planning)",
+      "Bash(fi)",
+      "Bash(test:*)",
+      "WebFetch(domain:api.github.com)",
+      "Skill(gsd:new-milestone)",
+      "Skill(gsd:new-milestone:*)",
+      "Bash(find:*)",
+      "Bash(git log:*)",
+      "Bash(git clone:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/session-start.js\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/session-end.js\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/pre-compact.js\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/pre-push-check.js\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.py$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".claude/plugins/code-quality/scripts/hooks/check-python-prints.js\""
+          }
+        ]
+      }
+    ]
   }
 }
