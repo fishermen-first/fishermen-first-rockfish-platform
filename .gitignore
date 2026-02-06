@@ -106,5 +106,10 @@ LLPs, Members, Coop IDs, Processor Codes*
 # Claude Code local settings (may contain API tokens)
 .claude/settings.local.json
 
-# Session state (personal workflow artifact)
-.planning/
+# Session state - ignore ephemeral files, but commit architecture/planning
+.planning/SESSION.md
+.planning/STATE.md
+.planning/research/
+.planning/.cache/
+.planning/**/*SCRATCH*.md
+.planning/**/*TEMP*.md
