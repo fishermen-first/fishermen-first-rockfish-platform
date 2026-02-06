@@ -7,9 +7,9 @@ This document covers the test suite for the Fishermen First Rockfish Platform.
 | Type | Count | Location |
 |------|-------|----------|
 | Unit Tests | 234 | `tests/` |
-| Integration Tests | 15 | `tests/test_quota_tracking.py` |
+| Integration Tests | 26 | `tests/test_quota_tracking.py` |
 | E2E Tests | 10 | `tests/e2e/` |
-| **Total** | **259** | |
+| **Total** | **270** | |
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ tests/
 ├── conftest.py            # Shared fixtures (mock Supabase, session state)
 ├── test_auth.py           # Authentication & authorization (47 tests)
 ├── test_dashboard.py      # Dashboard logic & formatting (27 tests)
-├── test_quota_tracking.py # DB integration: quota math (15 tests) *
+├── test_quota_tracking.py # DB integration: quota math (26 tests) *
 ├── test_transfers.py      # Quota transfers (83 tests)
 ├── test_upload.py         # CSV upload & parsing (35 tests)
 ├── test_vessel_owner.py   # Vessel owner view (28 tests)
@@ -100,7 +100,7 @@ tests/
 | **TestTransferSoftDelete** | 2 | Soft delete behavior |
 | **TestTransferDisplayFormatting** | 3 | Display formatting |
 
-### test_quota_tracking.py (15 tests) - Integration
+### test_quota_tracking.py (26 tests) - Integration
 
 **Requires:** `SUPABASE_SERVICE_ROLE_KEY` in `.env`
 
@@ -111,6 +111,21 @@ tests/
 | TestQuotaHarvests | 3 | Harvest deduction, accumulation, soft delete |
 | TestQuotaIsolation | 2 | Species independence, year independence |
 | TestQuotaEdgeCases | 4 | Full formula, zero remaining, overage, decimals |
+| TestBycatchAlertsRLS | 3 | Vessel owner policy, org isolation |
+| **TestQuotaCustomerScenarios** | **8** | **Real-world customer scenarios (NEW)** |
+
+#### TestQuotaCustomerScenarios (8 tests)
+
+| Test | Scenario | Verified |
+|------|----------|----------|
+| `test_bidirectional_transfers` | A↔B trading quota | Net calculation correct |
+| `test_chain_transfers_pass_through` | A→B→C chain | Pass-through math works |
+| `test_harvest_against_boosted_quota` | Harvest > original allocation | Transferred quota usable |
+| `test_full_season_simulation` | 5-week season operations | Sequential ops calculate correctly |
+| `test_undo_then_redo_transfer` | Soft delete + new transfer | Only active transfer counts |
+| `test_multi_species_full_scenario` | POP/NR/Dusky operations | Species fully isolated |
+| `test_large_values` | 5M+ lbs operations | No overflow at scale |
+| `test_many_transactions` | 50+ transfers, 100+ harvests | Aggregation accurate |
 
 ### test_upload.py (35 tests)
 

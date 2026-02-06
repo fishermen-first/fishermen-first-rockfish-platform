@@ -1,0 +1,1439 @@
+{
+  "name": "Fishermen First Web Application",
+  "branchName": "ralph/fishermen-first-web-app",
+  "description": "Rebuild Fishermen First Rockfish Platform as a production-grade Next.js web application. See tasks/prd-fishermen-first-web-app.md for complete domain context, database schema, business rules, and file format specifications. Tech stack: Next.js 14, TypeScript, shadcn/ui, TanStack Query, Supabase, Vercel. Quality gates: npm run typecheck && npm run lint && npm run test:unit.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Initialize Next.js Project with TypeScript",
+      "description": "As a developer, I want a properly configured Next.js 14 project so that I can build the application with type safety.",
+      "acceptanceCriteria": [
+        "Next.js 14 app router project created in `web/` directory",
+        "TypeScript configured with strict mode",
+        "ESLint + Prettier configured with consistent rules",
+        "Tailwind CSS configured with brand colors (#1e3a5f navy)",
+        "Package.json scripts: `dev`, `build`, `start`, `typecheck`, `lint`, `test:unit`",
+        "`.env.example` with required Supabase variables",
+        "Basic folder structure: `app/`, `components/`, `lib/`, `hooks/`, `types/`",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Configure Supabase Client",
+      "description": "As a developer, I want Supabase client utilities so that I can interact with the database and auth.",
+      "acceptanceCriteria": [
+        "`lib/supabase/client.ts` - Browser client for client components",
+        "`lib/supabase/server.ts` - Server client for API routes/RSC",
+        "`lib/supabase/middleware.ts` - Auth middleware helper",
+        "TypeScript types generated from database schema",
+        "Environment variables properly typed",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Install and Configure shadcn/ui",
+      "description": "As a developer, I want shadcn/ui components available so that I can build consistent, accessible interfaces.",
+      "acceptanceCriteria": [
+        "shadcn/ui CLI initialized",
+        "Base components installed: Button, Card, Input, Select, Table, Dialog, Badge, Tabs, Toast",
+        "Theme configured with Fishermen First brand colors",
+        "Components available in `components/ui/`",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-004",
+      "title": "Create Application Layout Shell",
+      "description": "As a user, I want a consistent layout with navigation so that I can move between features.",
+      "acceptanceCriteria": [
+        "Root layout with header (logo, user menu)",
+        "Sidebar navigation component with role-based menu items",
+        "Sidebar shows: Dashboard, Transfers, Alerts, Upload, Rosters, Allocations (manager/admin)",
+        "Sidebar shows: My Vessel, Report Bycatch (vessel_owner)",
+        "Active route highlighted in sidebar",
+        "Responsive: sidebar collapses on smaller screens",
+        "Footer with version number",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-005",
+      "title": "Set Up TanStack Query",
+      "description": "As a developer, I want TanStack Query configured so that I can manage server state efficiently.",
+      "acceptanceCriteria": [
+        "QueryClientProvider in root layout",
+        "Default stale time: 60 seconds",
+        "Default cache time: 5 minutes",
+        "React Query DevTools in development only",
+        "Custom hooks pattern established in `hooks/` directory",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-006",
+      "title": "Create Login Page",
+      "description": "As a user, I want to log in with email and password so that I can access the platform.",
+      "acceptanceCriteria": [
+        "Login page at `/login`",
+        "Email input with validation (valid email format)",
+        "Password input with show/hide toggle",
+        "Sign In button with loading state",
+        "Error message display for invalid credentials",
+        "Forgot Password link",
+        "Redirect to dashboard on successful login",
+        "Brand styling with navy color scheme",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-002", "US-003"]
+    },
+    {
+      "id": "US-007",
+      "title": "Create Password Reset Flow",
+      "description": "As a user, I want to reset my password so that I can regain access if I forget it.",
+      "acceptanceCriteria": [
+        "Forgot Password page at `/reset-password`",
+        "Email input for reset request",
+        "Success message: Check your email for reset link",
+        "Reset confirmation page at `/reset-password/confirm`",
+        "New password input with confirmation",
+        "Password requirements displayed (8+ chars, 1 uppercase, 1 number)",
+        "Redirect to login on successful reset",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Auth Middleware",
+      "description": "As a developer, I want route protection so that unauthorized users cannot access protected pages.",
+      "acceptanceCriteria": [
+        "Middleware checks auth status on protected routes",
+        "Unauthenticated users redirected to `/login`",
+        "Authenticated users redirected from `/login` to dashboard",
+        "User session refreshed automatically",
+        "Role stored in middleware context for route guards",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-009",
+      "title": "Create Auth Context and Hooks",
+      "description": "As a developer, I want auth utilities so that components can access user information.",
+      "acceptanceCriteria": [
+        "`useAuth()` hook returns: user, role, org_id, llp, isLoading",
+        "`useRequireAuth()` hook redirects if not authenticated",
+        "`useRequireRole(roles)` hook checks role permissions",
+        "Auth state persists across page refreshes",
+        "Logout function clears session and redirects to login",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Create User Menu Component",
+      "description": "As a user, I want a user menu in the header so that I can see my account and log out.",
+      "acceptanceCriteria": [
+        "User menu dropdown in header (top-right)",
+        "Shows user email and role badge",
+        "Log Out option",
+        "Logout clears session and redirects to login",
+        "Menu closes when clicking outside",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-011",
+      "title": "Create Dashboard Page Structure",
+      "description": "As a manager, I want a dashboard page so that I can monitor fleet quota status.",
+      "acceptanceCriteria": [
+        "Dashboard page at `/dashboard`",
+        "Page header: Quota Dashboard",
+        "Loading skeleton while data fetches",
+        "Error state with retry button",
+        "Protected route (manager/admin only)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-012",
+      "title": "Build KPI Summary Cards",
+      "description": "As a manager, I want KPI cards at the top of the dashboard so that I can see fleet-wide metrics at a glance.",
+      "acceptanceCriteria": [
+        "5 cards in a row: Total Vessels, Critical Risk Count, POP %, NR %, Dusky %",
+        "Total Vessels shows count of active LLPs",
+        "Critical Risk shows vessels with any species <10% remaining (red styling)",
+        "Species cards show: remaining lbs + percentage of total allocation",
+        "Numbers formatted with thousands separators",
+        "Cards have subtle shadow and border",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-011"]
+    },
+    {
+      "id": "US-013",
+      "title": "Build At-Risk Vessels Panel",
+      "description": "As a manager, I want to see at-risk vessels highlighted so that I can prioritize attention.",
+      "acceptanceCriteria": [
+        "Panel below KPI cards titled Vessels Needing Attention",
+        "Shows top 7 vessels sorted by lowest % remaining",
+        "Each row: colored dot (red<10%, yellow 10-50%, green>50%), vessel name, LLP, lowest %",
+        "Clicking a vessel filters the main table to that vessel",
+        "View All link scrolls to main table",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-012"]
+    },
+    {
+      "id": "US-014",
+      "title": "Create Quota Data Table",
+      "description": "As a manager, I want a sortable table of all vessel quotas so that I can analyze fleet status.",
+      "acceptanceCriteria": [
+        "Table columns: Co-Op, Vessel, LLP, Species, Allocation, Remaining, % Remaining",
+        "Default sort: % Remaining ascending (lowest first)",
+        "All columns sortable (click header to toggle)",
+        "% Remaining column color-coded by risk level",
+        "Inline progress bar showing % visually",
+        "Pagination: 25/50/100 rows per page selector",
+        "Shows total record count",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-013"]
+    },
+    {
+      "id": "US-015",
+      "title": "Add Dashboard Filters",
+      "description": "As a manager, I want to filter the dashboard by cooperative and vessel so that I can focus on specific data.",
+      "acceptanceCriteria": [
+        "Filter row above table with: Co-Op dropdown, Vessel dropdown, Species multi-select",
+        "Co-Op dropdown: All Cooperatives + list of coops",
+        "Vessel dropdown: cascades based on selected co-op",
+        "Species: checkboxes for POP, NR, Dusky (all selected by default)",
+        "Clear Filters button resets to defaults",
+        "Filters apply to both at-risk panel and main table",
+        "Filter state preserved in URL query params",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-014"]
+    },
+    {
+      "id": "US-016",
+      "title": "Implement Dashboard Data Fetching",
+      "description": "As a developer, I want efficient data fetching for the dashboard so that it loads quickly.",
+      "acceptanceCriteria": [
+        "API route: `GET /api/quota/summary` returns KPI data",
+        "API route: `GET /api/quota/remaining` returns paginated table data",
+        "TanStack Query hooks: `useQuotaSummary()`, `useQuotaRemaining(filters)`",
+        "Data cached for 60 seconds (staleTime)",
+        "Loading states while fetching",
+        "Error handling with user-friendly messages",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005", "US-011"]
+    },
+    {
+      "id": "US-017",
+      "title": "Add CSV Export to Dashboard",
+      "description": "As a manager, I want to export dashboard data to CSV so that I can analyze it in Excel.",
+      "acceptanceCriteria": [
+        "Export CSV button above table",
+        "Exports all filtered data (not just current page)",
+        "CSV includes all table columns",
+        "Filename: `quota-remaining-{date}.csv`",
+        "Button shows loading state during generation",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-014"]
+    },
+    {
+      "id": "US-018",
+      "title": "Create Transfers Page Structure",
+      "description": "As a manager, I want a transfers page so that I can manage quota movements between vessels.",
+      "acceptanceCriteria": [
+        "Transfers page at `/transfers`",
+        "Page header: Quota Transfers",
+        "Two sections: Transfer Form (top), Transfer History (bottom)",
+        "Protected route (manager/admin only)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-019",
+      "title": "Build Transfer Form",
+      "description": "As a manager, I want a transfer form so that I can move quota between vessels.",
+      "acceptanceCriteria": [
+        "Card with form fields in 2-column grid",
+        "From LLP dropdown: shows LLP - Vessel Name format",
+        "To LLP dropdown: same format, excludes selected From LLP",
+        "Species dropdown: POP, NR, Dusky",
+        "Amount (lbs) number input: min 1, max 10,000,000, step 100",
+        "Transfer Date date picker: defaults to today, max today",
+        "Notes textarea: optional, max 500 characters",
+        "Available quota display updates when From LLP and Species selected",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-018"]
+    },
+    {
+      "id": "US-020",
+      "title": "Implement Transfer Validation",
+      "description": "As a manager, I want real-time validation so that I cannot submit invalid transfers.",
+      "acceptanceCriteria": [
+        "From and To cannot be the same LLP (error: Cannot transfer to same vessel)",
+        "Amount must be > 0 (error: Amount must be greater than 0)",
+        "Amount cannot exceed available quota (error: Insufficient quota. Available: X lbs)",
+        "All required fields must be filled",
+        "Submit button disabled until form is valid",
+        "Validation errors shown inline below fields (red text)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-019"]
+    },
+    {
+      "id": "US-021",
+      "title": "Implement Transfer Submission",
+      "description": "As a manager, I want to submit transfers so that quota moves between vessels.",
+      "acceptanceCriteria": [
+        "API route: `POST /api/transfers` creates transfer record",
+        "Request body: from_llp, to_llp, species_code, pounds, transfer_date, notes",
+        "Server validates: sufficient quota, different LLPs, valid species",
+        "On success: toast notification, form resets, history refreshes",
+        "On error: toast with error message, form preserved",
+        "Submit button shows loading spinner during request",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-020"]
+    },
+    {
+      "id": "US-022",
+      "title": "Build Transfer History Table",
+      "description": "As a manager, I want to see transfer history so that I can review past movements.",
+      "acceptanceCriteria": [
+        "Table below transfer form",
+        "Columns: Date, From (LLP + Vessel), To (LLP + Vessel), Species, Amount, Notes, Created By",
+        "Sorted by date descending (newest first)",
+        "Pagination: 25 rows per page",
+        "Filter by date range (last 30 days default)",
+        "Filter by species",
+        "Search by vessel name or LLP",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-021"]
+    },
+    {
+      "id": "US-023",
+      "title": "Add Transfer Export",
+      "description": "As a manager, I want to export transfer history so that I can share records.",
+      "acceptanceCriteria": [
+        "Export dropdown with CSV, Excel, PDF options",
+        "CSV: standard comma-separated format",
+        "Excel: .xlsx with formatted headers",
+        "PDF: formatted table with title and date range",
+        "Exports filtered data based on current filters",
+        "Filename includes date range",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-022"]
+    },
+    {
+      "id": "US-024",
+      "title": "Create Alerts Page Structure",
+      "description": "As a manager, I want an alerts page so that I can manage bycatch notifications.",
+      "acceptanceCriteria": [
+        "Alerts page at `/alerts`",
+        "Page header: Bycatch Alerts",
+        "Tabs: Pending, Shared, Resolved, All",
+        "Pending tab shows count badge (e.g., Pending (3))",
+        "Protected route (manager/admin only)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-025",
+      "title": "Build Alert List View",
+      "description": "As a manager, I want to see alerts in a list so that I can review and act on them.",
+      "acceptanceCriteria": [
+        "Card-based list layout (not table)",
+        "Each card shows: Species, Status badge, Vessel (LLP), Amount, Location (DMS format)",
+        "Status badges: yellow Pending, green Shared, blue Resolved, red Dismissed",
+        "Expandable details section (click to expand)",
+        "Shared alerts show: shared timestamp, recipient count",
+        "Resolved alerts show: resolved timestamp, resolved by",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-024"]
+    },
+    {
+      "id": "US-026",
+      "title": "Add Alert Filters",
+      "description": "As a manager, I want to filter alerts so that I can find specific ones.",
+      "acceptanceCriteria": [
+        "Filter row: Cooperative dropdown, Species dropdown, Date range picker",
+        "Cooperative cascades from coop_members",
+        "Species shows PSC species only (Halibut, Cod, Sablefish, Thornyhead)",
+        "Date range defaults to last 30 days",
+        "Clear filters button",
+        "Filters apply to current tab",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-025"]
+    },
+    {
+      "id": "US-027",
+      "title": "Build Create Alert Form",
+      "description": "As a manager, I want to create alerts on behalf of vessels so that I can report bycatch.",
+      "acceptanceCriteria": [
+        "Create Alert button opens modal/dialog",
+        "Vessel (LLP) dropdown: LLP - Vessel Name format",
+        "Species dropdown: PSC species only",
+        "GPS Latitude input: validates 50-72N (Alaska)",
+        "GPS Longitude input: validates 130-180W (Alaska)",
+        "Amount input: min 1, label changes based on species unit (lbs/count)",
+        "Details textarea: optional, max 1000 chars",
+        "Coordinate input supports both decimal and DMS format",
+        "Create button submits, Cancel closes modal",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-026"]
+    },
+    {
+      "id": "US-028",
+      "title": "Implement Alert Sharing",
+      "description": "As a manager, I want to share alerts with the fleet so that vessels are notified.",
+      "acceptanceCriteria": [
+        "Share button on pending alert cards",
+        "Clicking opens preview modal showing email content",
+        "Preview shows: subject line, body text, recipient count",
+        "Send to Fleet button triggers email",
+        "API route: `PUT /api/alerts/{id}/share`",
+        "On success: alert moves to Shared tab, toast notification",
+        "Records: shared_at, shared_by, shared_recipient_count",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-027"]
+    },
+    {
+      "id": "US-029",
+      "title": "Implement Alert Resolution",
+      "description": "As a manager, I want to resolve alerts so that I can mark hotspots as no longer active.",
+      "acceptanceCriteria": [
+        "Resolve button on shared alert cards",
+        "Confirmation dialog: Mark this alert as resolved?",
+        "API route: `PUT /api/alerts/{id}/resolve`",
+        "On success: alert moves to Resolved tab, toast notification",
+        "Records: resolved_at, resolved_by",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-028"]
+    },
+    {
+      "id": "US-030",
+      "title": "Implement Alert Dismissal",
+      "description": "As a manager, I want to dismiss alerts so that I can remove irrelevant reports.",
+      "acceptanceCriteria": [
+        "Dismiss button on pending alert cards",
+        "Confirmation dialog with optional reason field",
+        "API route: `PUT /api/alerts/{id}/dismiss`",
+        "Soft deletes: is_deleted=true, status=dismissed",
+        "Alert removed from active views",
+        "Toast notification on success",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-027"]
+    },
+    {
+      "id": "US-031",
+      "title": "Create My Vessel Page",
+      "description": "As a vessel owner, I want to see my vessel's quota status so that I can plan trips.",
+      "acceptanceCriteria": [
+        "My Vessel page at `/my-vessel`",
+        "Page header: My Vessel: {Vessel Name}",
+        "Shows only data for user's linked LLP",
+        "Protected route (vessel_owner only)",
+        "Redirect to 403 if user has no linked LLP",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-032",
+      "title": "Build Vessel Quota Cards",
+      "description": "As a vessel owner, I want to see my remaining quota per species so that I know my limits.",
+      "acceptanceCriteria": [
+        "3 cards in a row: POP, NR, Dusky",
+        "Each card shows: remaining lbs, % of allocation",
+        "Color-coded by risk: red<10%, yellow 10-50%, green>50%",
+        "Shows allocation amount for reference",
+        "Cards have clear species labels",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-031"]
+    },
+    {
+      "id": "US-033",
+      "title": "Build Vessel Transfer History",
+      "description": "As a vessel owner, I want to see my transfer history so that I can verify movements.",
+      "acceptanceCriteria": [
+        "Section titled Transfer History",
+        "Table columns: Date, Direction (IN/OUT), Species, Amount, Other Vessel",
+        "IN transfers styled green with Received from label",
+        "OUT transfers styled red with Sent to label",
+        "Sorted by date descending",
+        "Shows notes if present",
+        "Read-only (no edit/delete)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-032"]
+    },
+    {
+      "id": "US-034",
+      "title": "Build Vessel Harvest Records",
+      "description": "As a vessel owner, I want to see my harvest records so that I can verify catches.",
+      "acceptanceCriteria": [
+        "Section titled Harvest Records",
+        "Table columns: Date, Species, Pounds, Processor",
+        "Sorted by date descending",
+        "Data from harvests table (eLandings sync)",
+        "Read-only display",
+        "Note explaining data source: Data synced from eLandings",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-033"]
+    },
+    {
+      "id": "US-035",
+      "title": "Create Report Bycatch Page",
+      "description": "As a vessel owner, I want to report bycatch encounters so that I can alert my co-op.",
+      "acceptanceCriteria": [
+        "Report page at `/report-bycatch`",
+        "Page header: Report Bycatch",
+        "Protected route (vessel_owner only)",
+        "Pre-fills vessel's LLP (not editable)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-036",
+      "title": "Build Bycatch Report Form",
+      "description": "As a vessel owner, I want a simple form to report bycatch so that I can submit quickly.",
+      "acceptanceCriteria": [
+        "GPS Latitude input with Alaska validation (50-72N)",
+        "GPS Longitude input with Alaska validation (130-180W)",
+        "Species dropdown: PSC species only",
+        "Amount input: label based on species unit",
+        "Details textarea: optional, max 1000 chars",
+        "Submit Report button",
+        "Success message: Report submitted. Your co-op manager will review.",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-035"]
+    },
+    {
+      "id": "US-037",
+      "title": "Show Recent Reports",
+      "description": "As a vessel owner, I want to see my recent reports so that I can track their status.",
+      "acceptanceCriteria": [
+        "Section below form: Your Recent Reports",
+        "Shows last 5 reports from this vessel",
+        "Each shows: species, amount, location, date, status emoji",
+        "Status: hourglass Pending, checkmark Shared, x Dismissed",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-036"]
+    },
+    {
+      "id": "US-038",
+      "title": "Create Upload Page Structure",
+      "description": "As a manager, I want an upload page so that I can import eLandings data.",
+      "acceptanceCriteria": [
+        "Upload page at `/upload`",
+        "Page header: File Upload",
+        "Two sections: Account Balance Upload, Catch Detail Upload",
+        "Protected route (manager/admin only)",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-039",
+      "title": "Build Account Balance Upload",
+      "description": "As a manager, I want to upload balance CSV files so that I can import eFish snapshots.",
+      "acceptanceCriteria": [
+        "Section titled Account Balance (CSV)",
+        "Drag-and-drop zone or file picker",
+        "Accepts only .csv files",
+        "Shows file name after selection",
+        "Upload button to process",
+        "Progress indicator during upload",
+        "Validates required columns before import",
+        "Shows success count and any errors",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-038"]
+    },
+    {
+      "id": "US-040",
+      "title": "Implement Balance CSV Processing",
+      "description": "As a developer, I want CSV processing logic so that balance files are imported correctly.",
+      "acceptanceCriteria": [
+        "API route: `POST /api/upload/balance`",
+        "Validates columns: Balance Date, Account Id, Account Name, Species Group, etc.",
+        "Checks for duplicates in file (warns but allows)",
+        "Checks for duplicates in DB (prevents import of existing)",
+        "Inserts valid records to account_balances_raw",
+        "Returns: imported count, skipped count, errors array",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-039"]
+    },
+    {
+      "id": "US-041",
+      "title": "Build Catch Detail Upload",
+      "description": "As a manager, I want to upload detail XLSX files so that I can import catch records.",
+      "acceptanceCriteria": [
+        "Section titled Catch Detail (Excel)",
+        "Drag-and-drop zone or file picker",
+        "Accepts only .xlsx files",
+        "Shows file name after selection",
+        "Upload button to process",
+        "Progress indicator during upload",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-038"]
+    },
+    {
+      "id": "US-042",
+      "title": "Implement Detail XLSX Processing",
+      "description": "As a developer, I want XLSX processing logic so that detail files are imported correctly.",
+      "acceptanceCriteria": [
+        "API route: `POST /api/upload/detail`",
+        "Parses XLSX using a library (e.g., xlsx or exceljs)",
+        "Validates required columns",
+        "Handles Excel date formats (converts to ISO)",
+        "Checks for duplicate report numbers",
+        "Inserts to account_detail_raw",
+        "Returns: imported count, skipped count, errors array",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 42,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-041"]
+    },
+    {
+      "id": "US-043",
+      "title": "Create Account Balances View",
+      "description": "As a manager, I want to view imported balances so that I can review reconciliation data.",
+      "acceptanceCriteria": [
+        "Page at `/reconciliation/balances`",
+        "Table showing latest balance per coop/species",
+        "Columns: Co-Op, Species, Balance Date, Initial, Transfers In/Out, Total, Catch, Remaining, % Taken",
+        "Shows last upload timestamp",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 43,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-040"]
+    },
+    {
+      "id": "US-044",
+      "title": "Create Catch Detail View",
+      "description": "As a manager, I want to view imported catch details so that I can audit records.",
+      "acceptanceCriteria": [
+        "Page at `/reconciliation/detail`",
+        "Table showing all imported catch records",
+        "Columns: Date, Vessel, ADFG, Species, Weight, Processor, Report #",
+        "Filter by date range, vessel",
+        "Sortable columns",
+        "Pagination",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 44,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-042"]
+    },
+    {
+      "id": "US-045",
+      "title": "Create Rosters Page with Tabs",
+      "description": "As a user, I want a rosters page so that I can view reference data.",
+      "acceptanceCriteria": [
+        "Rosters page at `/rosters`",
+        "Page header: Rosters",
+        "Tabs: Cooperatives, Members, Vessels, Processors, Species",
+        "Read-only tables in each tab",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 45,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-046",
+      "title": "Build Cooperatives Tab",
+      "description": "As a user, I want to view cooperatives so that I can see org structure.",
+      "acceptanceCriteria": [
+        "Table columns: Name, Code, ID",
+        "Shows all 4 cooperatives",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 46,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-045"]
+    },
+    {
+      "id": "US-047",
+      "title": "Build Members Tab",
+      "description": "As a user, I want to view coop members so that I can see LLP assignments.",
+      "acceptanceCriteria": [
+        "Table columns: Coop, LLP, Company Name, Vessel, Representative",
+        "Filter by cooperative dropdown",
+        "Shows all 46 members",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 47,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-045"]
+    },
+    {
+      "id": "US-048",
+      "title": "Build Vessels Tab",
+      "description": "As a user, I want to view vessels so that I can see fleet details.",
+      "acceptanceCriteria": [
+        "Table columns: Coop, Vessel Name, ADFG Number, Is Active",
+        "Shows active status clearly",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 48,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-045"]
+    },
+    {
+      "id": "US-049",
+      "title": "Build Processors Tab",
+      "description": "As a user, I want to view processors so that I can see processing facilities.",
+      "acceptanceCriteria": [
+        "Table columns: Name, Code, Associated Coop",
+        "Shows all 4 processors",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 49,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-045"]
+    },
+    {
+      "id": "US-050",
+      "title": "Build Species Tab",
+      "description": "As a user, I want to view species codes so that I can reference them.",
+      "acceptanceCriteria": [
+        "Table columns: Code, Name, Is PSC, Unit",
+        "Shows all species (target + PSC)",
+        "PSC species flagged clearly",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 50,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-045"]
+    },
+    {
+      "id": "US-051",
+      "title": "Create Allocations Page",
+      "description": "As a user, I want to view allocations so that I can see quota assignments.",
+      "acceptanceCriteria": [
+        "Allocations page at `/allocations`",
+        "Page header: Allocations",
+        "Tabs: TAC Summary, Vessel Allocations, PSC Allocations",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 51,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-004"]
+    },
+    {
+      "id": "US-052",
+      "title": "Build TAC Summary Tab",
+      "description": "As a user, I want to view annual TAC so that I can see total limits.",
+      "acceptanceCriteria": [
+        "Table columns: Species, TAC (mt), QS Pool %, TAC (lbs)",
+        "Shows 2026 data",
+        "Formatted numbers with separators",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 52,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-051"]
+    },
+    {
+      "id": "US-053",
+      "title": "Build Vessel Allocations Tab",
+      "description": "As a user, I want to view vessel allocations so that I can see starting quotas.",
+      "acceptanceCriteria": [
+        "Table columns: Coop, LLP, Vessel, POP, NR, Dusky, Total",
+        "Filter by cooperative",
+        "All amounts in lbs with formatting",
+        "Sortable columns",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 53,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-051"]
+    },
+    {
+      "id": "US-054",
+      "title": "Build PSC Allocations Tab",
+      "description": "As a user, I want to view PSC allocations so that I can see bycatch limits.",
+      "acceptanceCriteria": [
+        "Table showing Halibut CV sector allocation",
+        "Columns: Species, Year, CV Sector (lbs)",
+        "Formatted numbers",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 54,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-051"]
+    },
+    {
+      "id": "US-055",
+      "title": "Implement CSV Export Utility",
+      "description": "As a developer, I want a CSV export utility so that tables can be exported consistently.",
+      "acceptanceCriteria": [
+        "Utility function: `exportToCsv(data, columns, filename)`",
+        "Handles special characters (commas, quotes)",
+        "Triggers browser download",
+        "Works with filtered data",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 55,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-056",
+      "title": "Implement Excel Export Utility",
+      "description": "As a developer, I want an Excel export utility so that tables can be exported as .xlsx.",
+      "acceptanceCriteria": [
+        "Utility function: `exportToExcel(data, columns, filename)`",
+        "Uses xlsx or exceljs library",
+        "Formats headers as bold",
+        "Auto-sizes columns",
+        "Triggers browser download",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 56,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-057",
+      "title": "Implement PDF Export Utility",
+      "description": "As a developer, I want a PDF export utility so that tables can be exported as formatted PDFs.",
+      "acceptanceCriteria": [
+        "Utility function: `exportToPdf(data, columns, title, filename)`",
+        "Uses jspdf + jspdf-autotable or similar",
+        "Includes title and generation date",
+        "Proper page breaks for long tables",
+        "Landscape orientation for wide tables",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 57,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-058",
+      "title": "Add Export to All Data Tables",
+      "description": "As a user, I want export buttons on all tables so that I can download data.",
+      "acceptanceCriteria": [
+        "Dashboard table: CSV, Excel, PDF",
+        "Transfer history: CSV, Excel, PDF",
+        "Alert history: CSV, Excel, PDF",
+        "Rosters tabs: CSV, Excel",
+        "Allocations tabs: CSV, Excel",
+        "Consistent Export dropdown button style",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 58,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-055", "US-056", "US-057", "US-017", "US-022", "US-045", "US-051"]
+    },
+    {
+      "id": "US-059",
+      "title": "Set Up Sentry Error Tracking",
+      "description": "As a developer, I want Sentry configured so that errors are tracked in production.",
+      "acceptanceCriteria": [
+        "@sentry/nextjs package installed",
+        "Sentry initialized in `sentry.client.config.ts` and `sentry.server.config.ts`",
+        "Environment-specific DSN (production only)",
+        "Source maps uploaded on build",
+        "User context attached to errors (user_id, org_id, role)",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 59,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-060",
+      "title": "Create Error Boundary Components",
+      "description": "As a user, I want graceful error handling so that the app doesn't crash completely.",
+      "acceptanceCriteria": [
+        "Global error boundary in root layout",
+        "Feature-level error boundaries for each major section",
+        "Error UI shows: Something went wrong, Retry button, Report link",
+        "Errors logged to Sentry automatically",
+        "Development mode shows error details",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 60,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-059"]
+    },
+    {
+      "id": "US-061",
+      "title": "Implement Toast Notification System",
+      "description": "As a user, I want toast notifications so that I receive feedback on actions.",
+      "acceptanceCriteria": [
+        "Toast provider in root layout",
+        "`useToast()` hook for triggering toasts",
+        "Variants: success (green), error (red), warning (amber), info (blue)",
+        "Auto-dismiss after 5 seconds",
+        "Manual dismiss button",
+        "Stacks multiple toasts",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 61,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-062",
+      "title": "Create Loading States",
+      "description": "As a user, I want loading indicators so that I know when data is being fetched.",
+      "acceptanceCriteria": [
+        "Skeleton components for cards and tables",
+        "Spinner component for buttons and small areas",
+        "Full-page loading for route transitions",
+        "Consistent styling across app",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 62,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-063",
+      "title": "Set Up Vercel Analytics",
+      "description": "As a developer, I want analytics so that I can monitor performance.",
+      "acceptanceCriteria": [
+        "@vercel/analytics package installed",
+        "Analytics component in root layout",
+        "Web Vitals tracking enabled",
+        "Works in production only",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 63,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-064",
+      "title": "Set Up Vitest for Unit Tests",
+      "description": "As a developer, I want a unit test framework so that I can test components and utilities.",
+      "acceptanceCriteria": [
+        "Vitest configured",
+        "React Testing Library installed",
+        "Test utilities for rendering with providers",
+        "`npm run test:unit` script",
+        "Coverage reporting configured",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 64,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-065",
+      "title": "Write Unit Tests for Auth Hooks",
+      "description": "As a developer, I want auth hooks tested so that authentication logic is verified.",
+      "acceptanceCriteria": [
+        "Tests for `useAuth()` hook",
+        "Tests for `useRequireAuth()` hook",
+        "Tests for `useRequireRole()` hook",
+        "Mock Supabase client in tests",
+        ">80% coverage for auth hooks",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 65,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-064", "US-009"]
+    },
+    {
+      "id": "US-066",
+      "title": "Write Unit Tests for Data Utilities",
+      "description": "As a developer, I want utility functions tested so that calculations are verified.",
+      "acceptanceCriteria": [
+        "Tests for CSV export utility",
+        "Tests for Excel export utility",
+        "Tests for coordinate validation (Alaska bounds)",
+        "Tests for number formatting",
+        ">80% coverage for utilities",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes"
+      ],
+      "priority": 66,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-064", "US-055", "US-056"]
+    },
+    {
+      "id": "US-067",
+      "title": "Set Up Playwright for E2E Tests",
+      "description": "As a developer, I want E2E tests so that critical flows are verified.",
+      "acceptanceCriteria": [
+        "Playwright configured",
+        "Test database or mocks for E2E",
+        "`npm run test:e2e` script",
+        "CI configuration for E2E runs",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 67,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-068",
+      "title": "Write E2E Tests for Login Flow",
+      "description": "As a developer, I want login tested E2E so that auth works correctly.",
+      "acceptanceCriteria": [
+        "Test: successful login redirects to dashboard",
+        "Test: invalid credentials show error",
+        "Test: logout redirects to login",
+        "Test: protected route redirects when not logged in",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:e2e passes"
+      ],
+      "priority": 68,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-067", "US-006"]
+    },
+    {
+      "id": "US-069",
+      "title": "Write E2E Tests for Transfer Flow",
+      "description": "As a developer, I want transfer flow tested E2E so that the critical path works.",
+      "acceptanceCriteria": [
+        "Test: create transfer with valid data succeeds",
+        "Test: transfer appears in history",
+        "Test: validation prevents invalid transfers",
+        "Test: quota updates after transfer",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:e2e passes"
+      ],
+      "priority": 69,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-067", "US-021"]
+    },
+    {
+      "id": "US-070",
+      "title": "Write E2E Tests for Alert Flow",
+      "description": "As a developer, I want alert flow tested E2E so that bycatch notifications work.",
+      "acceptanceCriteria": [
+        "Test: create alert succeeds",
+        "Test: share alert changes status",
+        "Test: resolve alert changes status",
+        "Test: dismiss alert removes from view",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:e2e passes"
+      ],
+      "priority": 70,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-067", "US-029"]
+    },
+    {
+      "id": "US-071",
+      "title": "Configure Vercel Deployment",
+      "description": "As a developer, I want Vercel configured so that the app deploys automatically.",
+      "acceptanceCriteria": [
+        "Vercel project created and linked",
+        "Environment variables configured in Vercel",
+        "Production branch: main",
+        "Preview deployments for PRs",
+        "Custom domain configured (if available)",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 71,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-072",
+      "title": "Create Environment Configuration",
+      "description": "As a developer, I want environment configs so that dev/staging/prod are separate.",
+      "acceptanceCriteria": [
+        "`.env.local` for development",
+        "`.env.example` with all required variables documented",
+        "Vercel environment variables for production",
+        "Separate Supabase project for production (or same with caution)",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 72,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-071"]
+    },
+    {
+      "id": "US-073",
+      "title": "Write Developer Documentation",
+      "description": "As a developer, I want documentation so that others can contribute.",
+      "acceptanceCriteria": [
+        "README.md with: setup instructions, scripts, architecture overview",
+        "CONTRIBUTING.md with: code style, PR process, testing requirements",
+        "API documentation for all endpoints",
+        "Component documentation (Storybook optional)",
+        "npm run typecheck passes",
+        "npm run lint passes"
+      ],
+      "priority": 73,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-072"]
+    },
+    {
+      "id": "US-074",
+      "title": "Create User Guide",
+      "description": "As a user, I want a help guide so that I can learn how to use the app.",
+      "acceptanceCriteria": [
+        "Help page at `/help` or modal",
+        "Sections for each major feature",
+        "Screenshots or GIFs for key workflows",
+        "FAQ section",
+        "Contact support link",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "Visual verification in browser"
+      ],
+      "priority": 74,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-075",
+      "title": "Final QA and Launch Checklist",
+      "description": "As a team, I want a launch checklist so that nothing is missed.",
+      "acceptanceCriteria": [
+        "All user stories completed and tested",
+        "Performance audit passed (Lighthouse >90)",
+        "Accessibility audit passed (axe-core)",
+        "Security review completed",
+        "Data migration verified (if separate DB)",
+        "Monitoring alerts configured",
+        "Rollback plan documented",
+        "Stakeholder sign-off obtained",
+        "npm run typecheck passes",
+        "npm run lint passes",
+        "npm run test:unit passes",
+        "npm run test:e2e passes"
+      ],
+      "priority": 75,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-068", "US-069", "US-070", "US-073", "US-074"]
+    }
+  ]
+}

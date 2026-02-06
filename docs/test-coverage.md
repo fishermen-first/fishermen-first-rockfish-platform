@@ -1,9 +1,9 @@
 # Test Coverage Documentation
 
-**Last Updated:** 2026-01-08
-**Total Tests:** 148
+**Last Updated:** 2026-01-26
+**Total Tests:** 174 (unit) + 26 (integration) + 10 (e2e) = 210
 **Pass Rate:** 100%
-**Test Duration:** ~4.4 seconds
+**Test Duration:** ~4.4s (unit) / ~30s (integration) / ~80s (e2e)
 
 ---
 
@@ -15,6 +15,7 @@
 | Dashboard | `test_dashboard.py` | 46 | All Pass |
 | Transfers | `test_transfers.py` | 33 | All Pass |
 | Upload | `test_upload.py` | 28 | All Pass |
+| **Quota Tracking** | `test_quota_tracking.py` | **26** | **All Pass** |
 
 ---
 
@@ -342,6 +343,77 @@ Tests for `app/views/upload.py` - eFish data import functionality.
 | `test_very_large_quota_values` | Handles very large quota values | Pass |
 | `test_detail_with_special_characters_in_report_number` | Handles special chars in report numbers | Pass |
 | `test_zero_weight_posted` | Handles zero weight posted records | Pass |
+
+---
+
+## test_quota_tracking.py (26 tests) - Integration
+
+Tests for `quota_remaining` PostgreSQL view - verifies quota math against live database.
+
+**Requires:** `SUPABASE_SERVICE_ROLE_KEY` in `.env`
+
+### TestQuotaAllocation (2 tests)
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_allocation_only_shows_full_remaining` | Fresh allocation shows full amount remaining | Pass |
+| `test_zero_allocation` | Zero allocation shows zero remaining | Pass |
+
+### TestQuotaTransfers (4 tests)
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_transfer_out_reduces_source_quota` | Outbound transfer reduces source LLP | Pass |
+| `test_transfer_in_increases_dest_quota` | Inbound transfer increases destination LLP | Pass |
+| `test_multiple_transfers_accumulate` | Multiple transfers sum correctly | Pass |
+| `test_soft_deleted_transfer_excluded` | Soft-deleted transfers don't affect quota | Pass |
+
+### TestQuotaHarvests (3 tests)
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_harvest_reduces_quota` | Harvest reduces remaining quota | Pass |
+| `test_multiple_harvests_accumulate` | Multiple harvests sum correctly | Pass |
+| `test_soft_deleted_harvest_excluded` | Soft-deleted harvests don't affect quota | Pass |
+
+### TestQuotaIsolation (2 tests)
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_species_isolation` | POP transfers don't affect NR/Dusky | Pass |
+| `test_year_isolation` | 2026 activity doesn't affect 2025 data | Pass |
+
+### TestQuotaEdgeCases (4 tests)
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_full_quota_formula` | allocation + in - out - harvested = remaining | Pass |
+| `test_zero_remaining_after_full_harvest` | Harvest exactly = allocation gives 0 | Pass |
+| `test_negative_remaining_overage` | Overharvest shows negative remaining | Pass |
+| `test_decimal_precision` | Decimal values handled correctly | Pass |
+
+### TestBycatchAlertsRLS (3 tests)
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_vessel_owner_policy_restricts_to_own_alerts` | RLS restricts alerts to owner's LLP | Pass |
+| `test_rls_policy_exists_for_vessel_owner_select` | Documents expected policy | Pass |
+| `test_alerts_are_org_isolated` | Different orgs are isolated | Pass |
+
+### TestQuotaCustomerScenarios (8 tests) - NEW
+
+Real-world customer scenarios verifying quota math in realistic multi-step operations.
+
+| Test | Scenario | Expected Result | Status |
+|------|----------|-----------------|--------|
+| `test_bidirectional_transfers` | A↔B trade: A sends 10K, B sends 3K back | A: 43K, B: 37K | Pass |
+| `test_chain_transfers_pass_through` | A→B→C: A sends 15K to B, B sends 20K to C | A: 35K, B: 25K, C: 40K | Pass |
+| `test_harvest_against_boosted_quota` | A gets 25K from B, harvests 40K (> original 20K) | A: 5K remaining | Pass |
+| `test_full_season_simulation` | 5-week season: harvests + transfers | 100K + 10K - 12K - 70K = 28K | Pass |
+| `test_undo_then_redo_transfer` | Delete 10K transfer, create 8K transfer | Only 8K counts | Pass |
+| `test_multi_species_full_scenario` | Different ops on POP/NR/Dusky | Species fully isolated | Pass |
+| `test_large_values` | 5M allocation, millions in transfers | No overflow, correct math | Pass |
+| `test_many_transactions` | 50 transfers + 100 harvests | Aggregation accurate | Pass |
 
 ---
 
